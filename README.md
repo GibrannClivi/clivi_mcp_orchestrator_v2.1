@@ -330,12 +330,7 @@ Copyright © 2025 Clivi. Todos los derechos reservados.
 
 ---
 
-## 📞 Soporte
 
-- **Email**: tech@clivi.com.mx
-- **Slack**: #mcp-orchestrator
-- **Docs**: [Confluence Internal](https://clivi.atlassian.net)
-- **Monitor**: [Cloud Console](https://console.cloud.google.com)
 
 ---
 
