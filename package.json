@@ -1,0 +1,56 @@
+{
+  "name": "mcp-orchestrator-v1",
+  "version": "1.0.0",
+  "description": "AI-driven GraphQL orchestrator for Chargebee, HubSpot, and Firebase using official MCP servers",
+  "main": "dist/server.js",
+  "type": "commonjs",
+  "scripts": {
+    "dev": "nodemon src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "clean": "rm -rf dist",
+    "prebuild": "npm run clean",
+    "docker:build": "docker build -t mcp-orchestrator-v1 .",
+    "docker:run": "docker run -p 4000:4000 mcp-orchestrator-v1"
+  },
+  "keywords": [
+    "mcp",
+    "graphql",
+    "chargebee",
+    "hubspot",
+    "firebase",
+    "orchestrator",
+    "typescript"
+  ],
+  "author": "MCP Team",
+  "license": "MIT",
+  "dependencies": {
+    "@apollo/server": "^4.10.0",
+    "@chargebee/mcp": "^0.0.4",
+    "@hubspot/mcp-server": "^0.4.0",
+    "@modelcontextprotocol/sdk": "^1.13.2",
+    "dotenv": "^16.3.1",
+    "firebase-admin": "^12.0.0",
+    "firebase-tools": "^14.9.0",
+    "graphql": "^16.8.1",
+    "libphonenumber-js": "^1.10.51",
+    "node-cache": "^5.1.2"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.8",
+    "@types/node": "^20.10.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "eslint": "^8.54.0",
+    "jest": "^29.7.0",
+    "nodemon": "^3.0.2",
+    "prettier": "^3.1.0",
+    "ts-jest": "^29.1.1",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.3.2"
+  }
+}

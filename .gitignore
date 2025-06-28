@@ -1,0 +1,75 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Production builds
+/dist
+/build
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+
+# Firebase
+.firebase/
+firebase-debug.log
+.firebaserc
+
+# Docker
+Dockerfile.local
+docker-compose.override.yml
+
+demo*.sh
+
+# Tests y resultados
+test_*.sh
+test_*.log
+*_test_report.md
+*TEST_REPORT.md
+VALIDATION_RESULTS.md
+EXTENDED_TEST_REPORT.md
+DEPLOYMENT_SUCCESS.md
+FINAL_IMPROVEMENTS_SUMMARY.md
+MEJORAS_IMPLEMENTADAS_V2.md
+COMPLETE_FIELDS_VERIFICATION.md
+
+# Archivos markdown temporales (excepto README)
+*.md
+!README.md
+
+# Logs específicos del proyecto
+pglite-debug.log
+*.log
+
+# Scripts de demo y test
+monitor.sh
+validate_*.sh

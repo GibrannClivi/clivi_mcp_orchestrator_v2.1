@@ -1,0 +1,82 @@
+# Google Cloud Build ignore file
+# This file tells Cloud Build which files and directories to ignore
+
+# Version control
+.git/
+.gitignore
+
+# Dependencies
+node_modules/
+
+# Build outputs (will be generated during build)
+dist/
+
+# Development files
+.env
+.env.*
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+
+# nyc test coverage
+.nyc_output/
+
+# Dependency directories
+jspm_packages/
+
+# Optional npm cache directory
+.npm
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# dotenv environment variables file
+.env
+
+# Documentation that's not needed for build
+README.md
+CHANGELOG.md
+*.md
+
+# Test files (not needed for production)
+tests/
+test/
+*.test.js
+*.test.ts
+*.spec.js
+*.spec.ts
+
+# Demo scripts
+demo*.sh
+test_*.sh
+
+# Validation files
+*VALIDATION*.md
+*COMPLETE*.md
