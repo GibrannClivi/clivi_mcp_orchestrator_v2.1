@@ -1,78 +1,139 @@
 #!/bin/bash
 
-# MCP Orchestrator v1 - Deployment Script for Google Cloud Run
+# 🚀 Deploy Script para MCP Orchestrator con Variables de Entorno
 set -e
 
-# Configuration
+echo "🧹 Limpiando versiones previas de Cloud Run y Artifact Registry..."
+
+# Variables
 PROJECT_ID="dtwo-qa"
 SERVICE_NAME="mcp-orchestrator-v1"
 REGION="us-central1"
-REPOSITORY="cloud-run-source-deploy"
-IMAGE_NAME="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${SERVICE_NAME}"
-MEMORY="1Gi"
-CPU="1"
-MAX_INSTANCES="10"
-PORT="4001"
+REPOSITORY="mcp-repo"
+IMAGE_NAME="mcp-orchestrator"
 
-echo "🚀 Starting deployment to Google Cloud Run..."
+# Configurar proyecto
+gcloud config set project $PROJECT_ID
 
-# Check if logged in
-echo "📋 Checking Google Cloud authentication..."
-if ! gcloud auth list --filter=status:ACTIVE --format="value(account)" | grep -q .; then
-    echo "❌ Not authenticated with Google Cloud. Please run: gcloud auth login"
+echo "🗑️  Eliminando servicio existente de Cloud Run..."
+gcloud run services delete $SERVICE_NAME --region=$REGION --quiet || echo "⚠️  Servicio no existía"
+
+echo "🗑️  Limpiando imágenes del Artifact Registry..."
+# Crear repositorio si no existe
+gcloud artifacts repositories create $REPOSITORY --repository-format=docker --location=$REGION --quiet || echo "✅ Repositorio ya existe"
+
+# Listar y eliminar imágenes existentes
+gcloud artifacts docker images list $REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE_NAME --format="value(IMAGE)" | while read image; do
+    echo "Eliminando imagen: $image"
+    gcloud artifacts docker images delete "$image" --quiet || echo "⚠️  No se pudo eliminar $image"
+done
+
+echo "🔨 Construyendo nueva imagen Docker..."
+docker build -t $REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE_NAME:latest .
+
+echo "📦 Subiendo imagen al Artifact Registry..."
+docker push $REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE_NAME:latest
+
+echo "🚀 Desplegando a Cloud Run con variables de entorno..."
+
+# Cargar variables del archivo .env y verificar que se leyeron correctamente
+echo "📋 Cargando variables de entorno desde .env..."
+if [ ! -f .env ]; then
+    echo "❌ Error: archivo .env no encontrado"
     exit 1
 fi
 
-# Set project
-echo "🔧 Setting project to ${PROJECT_ID}..."
-gcloud config set project ${PROJECT_ID}
+# Exportar variables del .env
+export $(cat .env | grep -v '^#' | grep -v '^$' | xargs)
 
-# Enable required APIs
-echo "🔌 Enabling required APIs..."
-gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com
-
-# Build and push Docker image using Cloud Build with Artifact Registry
-echo "🏗️  Building and pushing Docker image to Artifact Registry..."
-gcloud builds submit --tag ${IMAGE_NAME}
-
-# Deploy to Cloud Run
-echo "🚀 Deploying to Cloud Run..."
-gcloud run deploy ${SERVICE_NAME} \
-  --image ${IMAGE_NAME} \
-  --platform managed \
-  --region ${REGION} \
-  --allow-unauthenticated \
-  --memory ${MEMORY} \
-  --cpu ${CPU} \
-  --max-instances ${MAX_INSTANCES} \
-  --port ${PORT} \
-  --set-env-vars NODE_ENV=production,CACHE_TTL=3600 \
-  --set-env-vars CHARGEBEE_ENABLED=true,HUBSPOT_ENABLED=true,FIREBASE_ENABLED=true \
-  --set-env-vars CHARGEBEE_SITE=your-chargebee-site \
-  --set-env-vars CHARGEBEE_API_KEY=your-chargebee-api-key \
-  --set-env-vars HUBSPOT_ACCESS_TOKEN=your-hubspot-access-token \
-  --set-env-vars HUBSPOT_API_KEY=your-hubspot-api-key \
-  --set-env-vars HUBSPOT_PORTAL_ID=your-hubspot-portal-id \
-  --set-env-vars PRIVATE_APP_ACCESS_TOKEN=your-hubspot-private-app-token \
-  --set-env-vars GOOGLE_CLOUD_PROJECT=dtwo-qa \
-  --set-env-vars FIRESTORE_PROJECT_ID=dtwo-qa \
-  --timeout 300 \
-  --concurrency 80
-
-# Get service URL
-SERVICE_URL=$(gcloud run services describe ${SERVICE_NAME} --region=${REGION} --format='value(status.url)')
-
-echo "✅ Deployment completed successfully!"
-echo "🌐 Service URL: ${SERVICE_URL}"
-echo "🔍 Health check: ${SERVICE_URL}/graphql?query={health}"
-echo "📊 GraphQL Playground: ${SERVICE_URL}/graphql"
-
-# Test the deployed service
-echo "🧪 Testing deployment..."
-if curl -f -s "${SERVICE_URL}/graphql" -H "Content-Type: application/json" -d '{"query":"{ health }"}' > /dev/null; then
-    echo "✅ Service is responding correctly!"
-else
-    echo "⚠️  Service might not be ready yet. Please check logs: gcloud run logs read ${SERVICE_NAME} --region=${REGION}"
+# Verificar variables críticas
+echo "🔍 Verificando variables críticas..."
+if [ -z "$CHARGEBEE_SITE" ] || [ -z "$CHARGEBEE_API_KEY" ]; then
+    echo "❌ Error: Variables de Chargebee no configuradas"
+    exit 1
 fi
 
-echo "🎉 Deployment complete! Your MCP Orchestrator v1 is now running on Cloud Run."
+if [ -z "$HUBSPOT_ACCESS_TOKEN" ]; then
+    echo "❌ Error: Variables de HubSpot no configuradas"
+    exit 1
+fi
+
+if [ -z "$GOOGLE_AISTUDIO_API_KEY" ]; then
+    echo "❌ Error: Variables de Google AI Studio no configuradas"
+    exit 1
+fi
+
+echo "✅ Variables de entorno verificadas correctamente"
+
+gcloud run deploy $SERVICE_NAME \
+  --image=$REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE_NAME:latest \
+  --region=$REGION \
+  --platform=managed \
+  --allow-unauthenticated \
+  --port=4001 \
+  --memory=1Gi \
+  --cpu=1 \
+  --max-instances=10 \
+  --timeout=300 \
+  --set-env-vars="ENV=$ENV" \
+  --set-env-vars="PROJECT_NAME=$PROJECT_NAME" \
+  --set-env-vars="CHARGEBEE_SITE=$CHARGEBEE_SITE" \
+  --set-env-vars="CHARGEBEE_API_KEY=$CHARGEBEE_API_KEY" \
+  --set-env-vars="GOOGLE_AISTUDIO_API_KEY=$GOOGLE_AISTUDIO_API_KEY" \
+  --set-env-vars="HUBSPOT_ACCESS_TOKEN=$HUBSPOT_ACCESS_TOKEN" \
+  --set-env-vars="HUBSPOT_API_KEY=$HUBSPOT_API_KEY" \
+  --set-env-vars="HUBSPOT_PORTAL_ID=$HUBSPOT_PORTAL_ID" \
+  --set-env-vars="HUBSPOT_CLIENT_SECRET=$HUBSPOT_CLIENT_SECRET" \
+  --set-env-vars="PRIVATE_APP_ACCESS_TOKEN=$PRIVATE_APP_ACCESS_TOKEN" \
+  --set-env-vars="GOOGLE_CLOUD_PROJECT=$GOOGLE_CLOUD_PROJECT" \
+  --set-env-vars="FIRESTORE_PROJECT_ID=$FIRESTORE_PROJECT_ID" \
+  --set-env-vars="USE_REAL_MCP=$USE_REAL_MCP" \
+  --set-env-vars="CACHE_TTL_SECONDS=$CACHE_TTL_SECONDS" \
+  --set-env-vars="LOG_LEVEL=$LOG_LEVEL" \
+  --set-env-vars="CORS_ALLOW_ORIGINS=$CORS_ALLOW_ORIGINS" \
+  --set-env-vars="GRAPHQL_INTROSPECTION=$GRAPHQL_INTROSPECTION" \
+  --set-env-vars="GRAPHQL_PLAYGROUND=$GRAPHQL_PLAYGROUND"
+
+echo "✅ Despliegue completado!"
+
+# Obtener la URL del servicio
+SERVICE_URL=$(gcloud run services describe $SERVICE_NAME --region=$REGION --format="value(status.url)")
+
+echo ""
+echo "🎯 INFORMACIÓN DEL DESPLIEGUE:"
+echo "================================="
+echo "📍 Service URL: $SERVICE_URL"
+echo "📍 GraphQL Endpoint: $SERVICE_URL/graphql"
+echo "📍 Health Check: $SERVICE_URL/health"
+echo "📍 Región: $REGION"
+echo "📍 Proyecto: $PROJECT_ID"
+echo ""
+
+echo "🧪 QUERY DE PRUEBA PARA POSTMAN:"
+echo "================================="
+echo "Method: POST"
+echo "URL: $SERVICE_URL/graphql"
+echo "Headers:"
+echo "  Content-Type: application/json"
+echo ""
+echo "Body (JSON):"
+cat << EOF
+{
+  "query": "query GetUserProfile(\$query: String!) { getUserProfile(query: \$query) { name firstName lastName email phone company subscriptionStatus plan nextBillingAmount customerId contactId sourceBreakdown { field value source } } }",
+  "variables": { "query": "saidh.jimenez@clivi.com.mx" }
+}
+EOF
+
+echo ""
+echo ""
+echo "🔍 CURL DE PRUEBA:"
+echo "=================="
+echo "curl -X POST $SERVICE_URL/graphql \\"
+echo "  -H \"Content-Type: application/json\" \\"
+echo "  -d '{"
+echo "    \"query\": \"query GetUserProfile(\\\$query: String!) { getUserProfile(query: \\\$query) { name firstName lastName email phone company subscriptionStatus plan nextBillingAmount customerId contactId sourceBreakdown { field value source } } }\","
+echo "    \"variables\": { \"query\": \"saidh.jimenez@clivi.com.mx\" }"
+echo "  }'"
+
+echo ""
+echo "✅ Listo para usar!"
