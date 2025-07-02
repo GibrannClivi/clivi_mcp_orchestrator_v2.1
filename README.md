@@ -43,8 +43,9 @@ El **Clivi MCP Orchestrator v2.1** es un servicio de integración que consolida 
 ## 🏗️ Arquitectura
 
 ### 🔧 Stack Tecnológico
+![mcp arquitectura](https://github.com/user-attachments/assets/94b0c4ea-b3e7-4338-9e8a-b9c4bc9026bb)
 
-```mermaid![mcp arquitectura](https://github.com/user-attachments/assets/894c575b-49bd-416b-a4f7-6a0d24288061)
+```
 
 graph TB
     A[GraphQL API] --> B[MCP Manager]
