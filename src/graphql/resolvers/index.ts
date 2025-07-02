@@ -56,7 +56,7 @@ export const resolvers = {
         const { mcpManager } = await import('../../mcp/mcpManager');
         
         const [health, documentation] = await Promise.all([
-          mcpManager.healthCheck(),
+          mcpManager.getHealthStatus(),
           mcpManager.documentAvailableTools()
         ]);
 

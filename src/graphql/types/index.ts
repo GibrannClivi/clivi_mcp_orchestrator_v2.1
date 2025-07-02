@@ -46,7 +46,7 @@ export interface UserProfile {
   
   // Billing Info (Chargebee)
   subscriptionStatus?: string;
-  planId?: string;
+  plan?: string;
   nextBillingAmount?: number;
   nextBillingDate?: string;
   billingCycle?: string;
@@ -121,7 +121,7 @@ export const typeDefs = `#graphql
     
     # Billing Info (Chargebee)
     subscriptionStatus: String
-    planId: String
+    plan: String
     nextBillingAmount: Float
     nextBillingDate: String
     billingCycle: String

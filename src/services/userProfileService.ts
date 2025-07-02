@@ -77,7 +77,7 @@ export class UserProfileService {
             company: undefined,
             jobTitle: undefined,
             subscriptionStatus: undefined,
-            planId: undefined,
+            plan: undefined,
             nextBillingAmount: undefined,
             nextBillingDate: undefined,
             billingCycle: undefined,
@@ -158,7 +158,7 @@ export class UserProfileService {
       
       // Billing Info (Chargebee)
       subscriptionStatus: undefined,
-      planId: undefined,
+      plan: undefined,
       nextBillingAmount: undefined,
       nextBillingDate: undefined,
       billingCycle: undefined,
@@ -222,11 +222,11 @@ export class UserProfileService {
         });
       }
       
-      if (chargebeeData.planId) {
-        profile.planId = chargebeeData.planId;
+      if (chargebeeData.plan) {
+        profile.plan = chargebeeData.plan;
         sourceBreakdown.push({
-          field: 'planId',
-          value: chargebeeData.planId,
+          field: 'plan',
+          value: chargebeeData.plan,
           source: 'chargebee'
         });
       }
@@ -608,7 +608,7 @@ export class UserProfileService {
       
       // Billing Info (Chargebee)
       subscriptionStatus: undefined,
-      planId: undefined,
+      plan: undefined,
       nextBillingAmount: undefined,
       nextBillingDate: undefined,
       billingCycle: undefined,
