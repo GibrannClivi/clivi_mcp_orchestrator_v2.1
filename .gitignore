@@ -53,18 +53,10 @@ demo*.sh
 # Tests y resultados
 test_*.sh
 test_*.log
-*_test_report.md
-*TEST_REPORT.md
-VALIDATION_RESULTS.md
-EXTENDED_TEST_REPORT.md
-DEPLOYMENT_SUCCESS.md
-FINAL_IMPROVEMENTS_SUMMARY.md
-MEJORAS_IMPLEMENTADAS_V2.md
-COMPLETE_FIELDS_VERIFICATION.md
 
 # Archivos markdown temporales (excepto README)
 *.md
-!README.md
+!README*.md
 
 # Logs específicos del proyecto
 pglite-debug.log
