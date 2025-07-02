@@ -642,26 +642,9 @@ Este software es propiedad de Clivi Technologies y está protegido por leyes de 
 
 ---
 
-## 📞 Soporte y Contacto
+## 📞 Soporte
 
-### 🔧 Soporte Técnico
-- **Email**: tech-support@clivi.com.mx
-- **Slack**: #mcp-orchestrator-support
-- **Hours**: Lunes a Viernes, 9:00 AM - 6:00 PM (GMT-6)
-
-### 📚 Recursos Adicionales
-- **API Documentation**: [Docs internas](https://docs.clivi.com.mx/mcp-orchestrator)
-- **Cloud Console**: [Google Cloud Project](https://console.cloud.google.com)
-- **Monitoring Dashboard**: [Cloud Monitoring](https://console.cloud.google.com/monitoring)
 - **Issue Tracker**: [GitHub Issues](https://github.com/GibrannClivi/clivi_mcp_orchestrator_v2.1/issues)
-
-### 🚀 Roadmap
-- **Q3 2025**: Integración con sistemas médicos adicionales
-- **Q4 2025**: API versioning y backward compatibility
-- **2026**: Machine learning para recomendaciones personalizadas
-
----
-
-**📅 Última actualización: Julio 2, 2025**  
+ 
 **🏷️ Versión: v2.1.0**  
-**👨‍💻 Mantenido por: Clivi Engineering Team**
+
