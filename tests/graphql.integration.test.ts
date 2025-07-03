@@ -52,7 +52,7 @@ describe('GraphQL Integration', () => {
       }
     });
 
-    test('should return user profile for phone query', async () => {
+    test('should handle phone query with no data found', async () => {
       const query = `
         query {
           getUserProfile(query: "+1-555-123-4567") {
@@ -72,12 +72,13 @@ describe('GraphQL Integration', () => {
 
       expect(result.body.kind).toBe('single');
       if (result.body.kind === 'single') {
-        expect(result.body.singleResult.errors).toBeUndefined();
-        expect(result.body.singleResult.data?.getUserProfile).toBeDefined();
+        // Should return error when no data is found (no fallbacks)
+        expect(result.body.singleResult.errors).toBeDefined();
+        expect(result.body.singleResult.errors?.[0]?.message).toContain('No data found for user');
       }
     });
 
-    test('should return user profile for name query', async () => {
+    test('should handle name query with no data found', async () => {
       const query = `
         query {
           getUserProfile(query: "Jose Antonio Trejo Torres") {
@@ -101,12 +102,13 @@ describe('GraphQL Integration', () => {
 
       expect(result.body.kind).toBe('single');
       if (result.body.kind === 'single') {
-        expect(result.body.singleResult.errors).toBeUndefined();
-        expect(result.body.singleResult.data?.getUserProfile).toBeDefined();
+        // Should return error when no data is found (no fallbacks)
+        expect(result.body.singleResult.errors).toBeDefined();
+        expect(result.body.singleResult.errors?.[0]?.message).toContain('No data found for user');
       }
     });
 
-    test('should handle empty queries gracefully with fallback data', async () => {
+    test('should handle empty queries with proper error response', async () => {
       const query = `
         query {
           getUserProfile(query: "") {
@@ -123,13 +125,9 @@ describe('GraphQL Integration', () => {
 
       expect(result.body.kind).toBe('single');
       if (result.body.kind === 'single') {
-        expect(result.body.singleResult.errors).toBeUndefined();
-        expect(result.body.singleResult.data).toBeDefined();
-        expect(result.body.singleResult.data?.getUserProfile).toBeDefined();
-        // Just check that we get data instead of an error
-        const profile = result.body.singleResult.data?.getUserProfile as any;
-        expect(profile.subscriptionStatus).toBeDefined();
-        expect(profile.planStatus).toBeDefined();
+        // Should return error for empty query (no fallbacks)
+        expect(result.body.singleResult.errors).toBeDefined();
+        expect(result.body.singleResult.errors?.[0]?.message).toContain('Query parameter is required and cannot be empty');
       }
     });
   });

@@ -93,9 +93,12 @@ export function normalizeQuery(query: string, queryType: QueryType): string {
     case 'phone':
       return normalizePhone(trimmedQuery);
     case 'name':
-      // Keep original casing for better name matching, normalize spaces
+      // Convert to title case for better name matching
       return trimmedQuery
         .replace(/\s+/g, ' ')  // Replace multiple spaces with single space
+        .split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(' ')
         .trim();
     default:
       return trimmedQuery;

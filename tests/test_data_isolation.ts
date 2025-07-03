@@ -5,7 +5,7 @@
  * This ensures each query returns only the user's own data
  */
 
-import { UserProfileService } from './src/services/userProfileService';
+import { UserProfileService } from '../src/services/userProfileService';
 
 async function testDataIsolation() {
   const userProfileService = new UserProfileService();

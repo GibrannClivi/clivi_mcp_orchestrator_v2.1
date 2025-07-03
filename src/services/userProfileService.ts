@@ -1,24 +1,18 @@
 /**
- * User Profile Service - Core business logic for consolidating user data
- * Implements the main getUserProfile functionality
+ * User Profile Service - FIREBASE/FIRESTORE INTEGRATION (SIMPLE)
  */
-import { UserProfile, FieldSource, Appointment, Ticket, EmergencyContact } from '../graphql/types';
+import { UserProfile, FieldSource } from '../graphql/types';
 import { detectQueryType, normalizeQuery, validateQuery, QueryType } from '../utils/queryDetector';
-import { mcpManager, MCPManager } from '../mcp/mcpManager';
+import { mcpManager } from '../mcp/mcpManager';
 import CacheManager from '../cache/cacheManager';
 
 export class UserProfileService {
-  private mcpManager: MCPManager;
   private cacheManager: CacheManager;
 
   constructor() {
-    this.mcpManager = mcpManager;
     this.cacheManager = new CacheManager();
   }
 
-  /**
-   * Get comprehensive user profile from multiple sources
-   */
   async getUserProfile(query: string): Promise<UserProfile> {
     const startTime = Date.now();
     
@@ -30,7 +24,6 @@ export class UserProfileService {
     
     // Validate query format (but be permissive with phone numbers for better UX)
     if (!validateQuery(normalizedQuery, queryType)) {
-      // For phone numbers, be more permissive and try anyway
       if (queryType !== 'phone') {
         throw new Error(`Invalid ${queryType} format: ${query}`);
       } else {
@@ -51,7 +44,7 @@ export class UserProfileService {
 
     try {
       // Fetch data from all MCP sources in parallel
-      const sources = await this.mcpManager.fetchAllSources(normalizedQuery, queryType);
+      const sources = await mcpManager.fetchAllSources(normalizedQuery, queryType);
       
       console.log(`Data sources used: ${Object.keys(sources).join(', ')}`);
       
@@ -62,9 +55,6 @@ export class UserProfileService {
 
       if (!hasRealData) {
         console.log('❌ No real data found in any MCP source');
-        
-        // NO FALLBACKS - If no real data exists, return null/error
-        // This enforces the requirement: "sin errores ni fallbacks, ni datos inventados"
         throw new Error(`No data found for user: ${normalizedQuery}`);
       }
       
@@ -80,20 +70,12 @@ export class UserProfileService {
       return profile;
     } catch (error) {
       console.error('Error fetching user profile:', error);
-      
-      // NO FALLBACKS - Re-throw the error instead of returning fallback data
-      // This enforces: "sin errores ni fallbacks, ni datos inventados"
       throw error;
     }
   }
 
-  /**
-   * Consolidate data from multiple MCP sources into a single UserProfile
-   */
   private async consolidateUserProfile(sources: Record<string, any>, query: string, queryType: QueryType): Promise<UserProfile> {
-    // Initialize ALL fields with default values to ensure complete schema response
     const profile: UserProfile = {
-      // Basic Info (HubSpot)
       name: undefined,
       firstName: undefined,
       lastName: undefined,
@@ -101,8 +83,6 @@ export class UserProfileService {
       phone: undefined,
       company: undefined,
       jobTitle: undefined,
-      
-      // Billing Info (Chargebee)
       subscriptionStatus: undefined,
       plan: undefined,
       nextBillingAmount: undefined,
@@ -110,16 +90,13 @@ export class UserProfileService {
       billingCycle: undefined,
       customerId: undefined,
       subscriptionId: undefined,
-      
-      // CRM Info (HubSpot)
       contactId: undefined,
       lastActivity: undefined,
       dealStage: undefined,
       leadScore: undefined,
       lastTicket: undefined,
-      
-      // Medical Info (Firebase)
       userId: undefined,
+      emailAdress: undefined,
       planStatus: undefined,
       medicalPlan: undefined,
       medicine: [],
@@ -129,8 +106,8 @@ export class UserProfileService {
       nextAppointment: undefined,
       allergies: [],
       emergencyContact: undefined,
-      
-      // System Info
+      treatments: [],
+      healthSummary: undefined,
       sourceBreakdown: [],
       suggestions: []
     };
@@ -138,472 +115,262 @@ export class UserProfileService {
     const sourceBreakdown: FieldSource[] = [];
     let hasRealData = false;
 
-    // Always set the queried field based on query type
+    // Set the queried field based on query type
     if (queryType === 'email') {
       profile.email = query;
-      sourceBreakdown.push({
-        field: 'email',
-        value: query,
-        source: 'query'
-      });
+      sourceBreakdown.push({ field: 'email', value: query, source: 'query' });
     } else if (queryType === 'phone') {
       profile.phone = query;
-      sourceBreakdown.push({
-        field: 'phone',
-        value: query,
-        source: 'query'
-      });
+      sourceBreakdown.push({ field: 'phone', value: query, source: 'query' });
     } else if (queryType === 'name') {
       profile.name = query;
-      sourceBreakdown.push({
-        field: 'name',
-        value: query,
-        source: 'query'
-      });
+      sourceBreakdown.push({ field: 'name', value: query, source: 'query' });
     }
 
-    // Check if we have any real data from the sources
-    Object.values(sources).forEach(source => {
-      if (source.data && Object.keys(source.data).length > 0) {
-        hasRealData = true;
-      }
-    });
-
-    // Process Chargebee data (billing info)
-    if (sources.chargebee?.data) {
-      const chargebeeData = sources.chargebee.data;
+    // Process HubSpot data
+    if (sources.hubspot?.data?.contact) {
+      const contact = sources.hubspot.data.contact;
+      hasRealData = true;
       
-      if (chargebeeData.subscriptionStatus) {
-        profile.subscriptionStatus = chargebeeData.subscriptionStatus;
-        sourceBreakdown.push({
-          field: 'subscriptionStatus',
-          value: chargebeeData.subscriptionStatus,
-          source: 'chargebee'
-        });
-      }
-      
-      if (chargebeeData.plan) {
-        profile.plan = chargebeeData.plan;
-        sourceBreakdown.push({
-          field: 'plan',
-          value: chargebeeData.plan,
-          source: 'chargebee'
-        });
-      }
-      
-      if (chargebeeData.nextBillingAmount) {
-        profile.nextBillingAmount = chargebeeData.nextBillingAmount;
-        sourceBreakdown.push({
-          field: 'nextBillingAmount',
-          value: chargebeeData.nextBillingAmount.toString(),
-          source: 'chargebee'
-        });
-      }
-      
-      if (chargebeeData.nextBillingDate) {
-        profile.nextBillingDate = chargebeeData.nextBillingDate;
-        sourceBreakdown.push({
-          field: 'nextBillingDate',
-          value: chargebeeData.nextBillingDate,
-          source: 'chargebee'
-        });
-      }
-      
-      if (chargebeeData.billingCycle) {
-        profile.billingCycle = chargebeeData.billingCycle;
-        sourceBreakdown.push({
-          field: 'billingCycle',
-          value: chargebeeData.billingCycle,
-          source: 'chargebee'
-        });
-      }
-      
-      if (chargebeeData.customerId) {
-        profile.customerId = chargebeeData.customerId;
-        sourceBreakdown.push({
-          field: 'customerId',
-          value: chargebeeData.customerId,
-          source: 'chargebee'
-        });
-      }
-      
-      if (chargebeeData.subscriptionId) {
-        profile.subscriptionId = chargebeeData.subscriptionId;
-        sourceBreakdown.push({
-          field: 'subscriptionId',
-          value: chargebeeData.subscriptionId,
-          source: 'chargebee'
-        });
+      if (contact.id) {
+        profile.contactId = contact.id;
+        sourceBreakdown.push({ field: 'contactId', value: contact.id, source: 'hubspot' });
       }
 
-      // Extract basic info from Chargebee if available
-      if (chargebeeData.firstName && !profile.firstName) {
-        profile.firstName = chargebeeData.firstName;
-        sourceBreakdown.push({
-          field: 'firstName',
-          value: chargebeeData.firstName,
-          source: 'chargebee'
-        });
-      }
+      if (contact.properties) {
+        const props = contact.properties;
+        
+        if (props.email && !profile.email) {
+          profile.email = props.email;
+          sourceBreakdown.push({ field: 'email', value: props.email, source: 'hubspot' });
+        }
 
-      if (chargebeeData.lastName && !profile.lastName) {
-        profile.lastName = chargebeeData.lastName;
-        sourceBreakdown.push({
-          field: 'lastName',
-          value: chargebeeData.lastName,
-          source: 'chargebee'
-        });
-      }
+        if (props.phone && !profile.phone) {
+          profile.phone = props.phone;
+          sourceBreakdown.push({ field: 'phone', value: props.phone, source: 'hubspot' });
+        }
 
-      if (chargebeeData.company && !profile.company) {
-        profile.company = chargebeeData.company;
-        sourceBreakdown.push({
-          field: 'company',
-          value: chargebeeData.company,
-          source: 'chargebee'
-        });
-      }
+        if (props.firstname && !profile.firstName) {
+          profile.firstName = props.firstname;
+          sourceBreakdown.push({ field: 'firstName', value: props.firstname, source: 'hubspot' });
+        }
 
-      // Extract phone from Chargebee if available
-      if (chargebeeData.phone && !profile.phone) {
-        profile.phone = chargebeeData.phone;
-        sourceBreakdown.push({
-          field: 'phone',
-          value: chargebeeData.phone,
-          source: 'chargebee'
-        });
-      }
+        if (props.lastname && !profile.lastName) {
+          profile.lastName = props.lastname;
+          sourceBreakdown.push({ field: 'lastName', value: props.lastname, source: 'hubspot' });
+        }
 
-      // Extract email from Chargebee if not already set
-      if (chargebeeData.email && !profile.email) {
-        profile.email = chargebeeData.email;
-        sourceBreakdown.push({
-          field: 'email',
-          value: chargebeeData.email,
-          source: 'chargebee'
-        });
-      }
+        if ((props.firstname || props.lastname) && !profile.name) {
+          profile.name = `${props.firstname || ''} ${props.lastname || ''}`.trim();
+          sourceBreakdown.push({ field: 'name', value: profile.name, source: 'hubspot' });
+        }
 
-      // Build name from firstName + lastName if not already set
-      if (!profile.name && (chargebeeData.firstName || chargebeeData.lastName)) {
-        const fullName = [chargebeeData.firstName, chargebeeData.lastName].filter(Boolean).join(' ');
-        if (fullName) {
-          profile.name = fullName;
-          sourceBreakdown.push({
-            field: 'name',
-            value: fullName,
-            source: 'chargebee'
-          });
+        if (props.company) {
+          profile.company = props.company;
+          sourceBreakdown.push({ field: 'company', value: props.company, source: 'hubspot' });
+        }
+
+        if (props.jobtitle) {
+          profile.jobTitle = props.jobtitle;
+          sourceBreakdown.push({ field: 'jobTitle', value: props.jobtitle, source: 'hubspot' });
         }
       }
     }
 
-    // Process HubSpot data (CRM info)
-    if (sources.hubspot?.data) {
-      const hubspotData = sources.hubspot.data;
+    // Process Chargebee data
+    if (sources.chargebee?.data?.customer) {
+      const customer = sources.chargebee.data.customer;
+      hasRealData = true;
       
-      if (hubspotData.contactId) {
-        profile.contactId = hubspotData.contactId;
-        sourceBreakdown.push({
-          field: 'contactId',
-          value: hubspotData.contactId,
-          source: 'hubspot'
-        });
+      if (customer.id) {
+        profile.customerId = customer.id;
+        sourceBreakdown.push({ field: 'customerId', value: customer.id, source: 'chargebee' });
       }
-      
-      if (hubspotData.name) {
-        profile.name = hubspotData.name;
-        sourceBreakdown.push({
-          field: 'name',
-          value: hubspotData.name,
-          source: 'hubspot'
-        });
+
+      if (sources.chargebee.data.subscription) {
+        const subscription = sources.chargebee.data.subscription;
+        
+        if (subscription.id) {
+          profile.subscriptionId = subscription.id;
+          sourceBreakdown.push({ field: 'subscriptionId', value: subscription.id, source: 'chargebee' });
+        }
+
+        if (subscription.status) {
+          profile.subscriptionStatus = subscription.status;
+          sourceBreakdown.push({ field: 'subscriptionStatus', value: subscription.status, source: 'chargebee' });
+        }
+
+        if (subscription.plan_id) {
+          const planName = this.formatPlanName(subscription.plan_id);
+          profile.plan = planName;
+          sourceBreakdown.push({ field: 'plan', value: planName, source: 'chargebee' });
+        } else if (subscription.subscription_items && subscription.subscription_items.length > 0) {
+          // Extract plan from subscription items (Chargebee v2 API structure)
+          const planItem = subscription.subscription_items.find((item: any) => item.item_type === 'plan');
+          if (planItem && planItem.item_price_id) {
+            const planName = this.formatPlanName(planItem.item_price_id);
+            profile.plan = planName;
+            sourceBreakdown.push({ field: 'plan', value: planName, source: 'chargebee' });
+          }
+        }
       }
-      
-      if (hubspotData.firstName) {
-        profile.firstName = hubspotData.firstName;
-        sourceBreakdown.push({
-          field: 'firstName',
-          value: hubspotData.firstName,
-          source: 'hubspot'
-        });
+
+      if (customer.first_name && !profile.firstName) {
+        profile.firstName = customer.first_name;
+        sourceBreakdown.push({ field: 'firstName', value: customer.first_name, source: 'chargebee' });
       }
-      
-      if (hubspotData.lastName) {
-        profile.lastName = hubspotData.lastName;
-        sourceBreakdown.push({
-          field: 'lastName',
-          value: hubspotData.lastName,
-          source: 'hubspot'
-        });
+
+      if (customer.last_name && !profile.lastName) {
+        profile.lastName = customer.last_name;
+        sourceBreakdown.push({ field: 'lastName', value: customer.last_name, source: 'chargebee' });
       }
-      
-      if (hubspotData.email) {
-        profile.email = hubspotData.email;
-        sourceBreakdown.push({
-          field: 'email',
-          value: hubspotData.email,
-          source: 'hubspot'
-        });
+
+      if (customer.email && !profile.email) {
+        profile.email = customer.email;
+        sourceBreakdown.push({ field: 'email', value: customer.email, source: 'chargebee' });
       }
-      
-      if (hubspotData.phone) {
-        profile.phone = hubspotData.phone;
-        sourceBreakdown.push({
-          field: 'phone',
-          value: hubspotData.phone,
-          source: 'hubspot'
-        });
-      }
-      
-      if (hubspotData.company) {
-        profile.company = hubspotData.company;
-        sourceBreakdown.push({
-          field: 'company',
-          value: hubspotData.company,
-          source: 'hubspot'
-        });
-      }
-      
-      if (hubspotData.jobTitle) {
-        profile.jobTitle = hubspotData.jobTitle;
-        sourceBreakdown.push({
-          field: 'jobTitle',
-          value: hubspotData.jobTitle,
-          source: 'hubspot'
-        });
-      }
-      
-      if (hubspotData.lastActivity) {
-        profile.lastActivity = hubspotData.lastActivity;
-        sourceBreakdown.push({
-          field: 'lastActivity',
-          value: hubspotData.lastActivity,
-          source: 'hubspot'
-        });
-      }
-      
-      if (hubspotData.dealStage) {
-        profile.dealStage = hubspotData.dealStage;
-        sourceBreakdown.push({
-          field: 'dealStage',
-          value: hubspotData.dealStage,
-          source: 'hubspot'
-        });
-      }
-      
-      if (hubspotData.leadScore) {
-        profile.leadScore = hubspotData.leadScore;
-        sourceBreakdown.push({
-          field: 'leadScore',
-          value: hubspotData.leadScore.toString(),
-          source: 'hubspot'
-        });
-      }
-      
-      if (hubspotData.lastTicket) {
-        profile.lastTicket = hubspotData.lastTicket;
-        sourceBreakdown.push({
-          field: 'lastTicket',
-          value: `${hubspotData.lastTicket.subject} (${hubspotData.lastTicket.status})`,
-          source: 'hubspot'
-        });
+
+      if ((customer.first_name || customer.last_name) && !profile.name) {
+        profile.name = `${customer.first_name || ''} ${customer.last_name || ''}`.trim();
+        sourceBreakdown.push({ field: 'name', value: profile.name, source: 'chargebee' });
       }
     }
 
-    // Process Firebase data (medical info)
-    if (sources.firebase?.data) {
-      const firebaseData = sources.firebase.data;
+    // Process Firebase data - FIRESTORE ONLY (SIMPLE)
+    if (sources.firebase?.data?.user) {
+      const firebaseUser = sources.firebase.data.user;
+      hasRealData = true;
       
-      if (firebaseData.userId) {
-        profile.userId = firebaseData.userId;
-        sourceBreakdown.push({
-          field: 'userId',
-          value: firebaseData.userId,
-          source: 'firebase'
-        });
+      // Set userId from Firebase UID
+      if (firebaseUser.uid) {
+        profile.userId = firebaseUser.uid;
+        sourceBreakdown.push({ field: 'userId', value: firebaseUser.uid, source: 'firebase' });
       }
       
       // Extract email from Firebase if not already set
-      if (firebaseData.email && !profile.email) {
-        profile.email = firebaseData.email;
-        sourceBreakdown.push({
-          field: 'email',
-          value: firebaseData.email,
-          source: 'firebase'
-        });
+      if (firebaseUser.email && !profile.email) {
+        profile.email = firebaseUser.email;
+        sourceBreakdown.push({ field: 'email', value: firebaseUser.email, source: 'firebase' });
+      }
+      
+      // Extract emailAdress (important for user profile confirmation)
+      if (firebaseUser.emailAdress) {
+        profile.emailAdress = firebaseUser.emailAdress;
+        sourceBreakdown.push({ field: 'emailAdress', value: firebaseUser.emailAdress, source: 'firebase' });
       }
       
       // Extract phone from Firebase if not already set
-      if (firebaseData.phone && !profile.phone) {
-        profile.phone = firebaseData.phone;
-        sourceBreakdown.push({
-          field: 'phone',
-          value: firebaseData.phone,
-          source: 'firebase'
-        });
+      if (firebaseUser.phoneNumber && !profile.phone) {
+        profile.phone = firebaseUser.phoneNumber;
+        sourceBreakdown.push({ field: 'phone', value: firebaseUser.phoneNumber, source: 'firebase' });
       }
       
       // Extract displayName from Firebase if not already set
-      if (firebaseData.displayName && !profile.name) {
-        profile.name = firebaseData.displayName;
-        sourceBreakdown.push({
-          field: 'name',
-          value: firebaseData.displayName,
-          source: 'firebase'
-        });
+      if (firebaseUser.displayName && !profile.name) {
+        profile.name = firebaseUser.displayName;
+        sourceBreakdown.push({ field: 'name', value: firebaseUser.displayName, source: 'firebase' });
       }
       
-      if (firebaseData.planStatus) {
-        profile.planStatus = firebaseData.planStatus;
-        sourceBreakdown.push({
-          field: 'planStatus',
-          value: firebaseData.planStatus,
-          source: 'firebase'
-        });
+      // Extract firstName/lastName if not already set
+      if (firebaseUser.firstName && !profile.firstName) {
+        profile.firstName = firebaseUser.firstName;
+        sourceBreakdown.push({ field: 'firstName', value: firebaseUser.firstName, source: 'firebase' });
       }
       
-      if (firebaseData.medicalPlan) {
-        profile.medicalPlan = firebaseData.medicalPlan;
-        sourceBreakdown.push({
-          field: 'medicalPlan',
-          value: firebaseData.medicalPlan,
-          source: 'firebase'
-        });
+      if (firebaseUser.lastName && !profile.lastName) {
+        profile.lastName = firebaseUser.lastName;
+        sourceBreakdown.push({ field: 'lastName', value: firebaseUser.lastName, source: 'firebase' });
       }
       
-      if (firebaseData.medicine) {
-        profile.medicine = firebaseData.medicine;
-        profile.medicineCount = firebaseData.medicine.length;
-        sourceBreakdown.push({
-          field: 'medicine',
-          value: `${firebaseData.medicine.length} medications`,
-          source: 'firebase'
-        });
+      // Medical/App specific data - FIREBASE UNIQUE FEATURES
+      if (firebaseUser.planStatus) {
+        profile.planStatus = firebaseUser.planStatus;
+        sourceBreakdown.push({ field: 'planStatus', value: firebaseUser.planStatus, source: 'firebase' });
       }
       
-      if (firebaseData.selfSupplyLogs) {
-        profile.selfSupplyLogs = firebaseData.selfSupplyLogs;
-        sourceBreakdown.push({
-          field: 'selfSupplyLogs',
-          value: `${firebaseData.selfSupplyLogs.length} entries`,
-          source: 'firebase'
-        });
+      if (firebaseUser.medicalPlan) {
+        profile.medicalPlan = firebaseUser.medicalPlan;
+        sourceBreakdown.push({ field: 'medicalPlan', value: firebaseUser.medicalPlan, source: 'firebase' });
       }
       
-      if (firebaseData.lastAppointment) {
-        profile.lastAppointment = firebaseData.lastAppointment;
-        sourceBreakdown.push({
-          field: 'lastAppointment',
-          value: `${firebaseData.lastAppointment.date} (${firebaseData.lastAppointment.status})`,
-          source: 'firebase'
-        });
+      if (firebaseUser.medicine && Array.isArray(firebaseUser.medicine)) {
+        profile.medicine = firebaseUser.medicine;
+        profile.medicineCount = firebaseUser.medicine.length;
+        sourceBreakdown.push({ field: 'medicine', value: `${firebaseUser.medicine.length} medications`, source: 'firebase' });
       }
       
-      if (firebaseData.nextAppointment) {
-        profile.nextAppointment = firebaseData.nextAppointment;
-        sourceBreakdown.push({
-          field: 'nextAppointment',
-          value: `${firebaseData.nextAppointment.date} (${firebaseData.nextAppointment.status})`,
-          source: 'firebase'
-        });
+      if (firebaseUser.allergies && Array.isArray(firebaseUser.allergies)) {
+        profile.allergies = firebaseUser.allergies;
+        sourceBreakdown.push({ field: 'allergies', value: `${firebaseUser.allergies.length} allergies`, source: 'firebase' });
       }
       
-      if (firebaseData.allergies) {
-        profile.allergies = firebaseData.allergies;
-        sourceBreakdown.push({
-          field: 'allergies',
-          value: `${firebaseData.allergies.length} allergies`,
-          source: 'firebase'
-        });
+      if (firebaseUser.emergencyContact) {
+        profile.emergencyContact = firebaseUser.emergencyContact;
+        sourceBreakdown.push({ field: 'emergencyContact', value: `${firebaseUser.emergencyContact.name}`, source: 'firebase' });
       }
       
-      if (firebaseData.emergencyContact) {
-        profile.emergencyContact = firebaseData.emergencyContact;
-        sourceBreakdown.push({
-          field: 'emergencyContact',
-          value: `${firebaseData.emergencyContact.name} (${firebaseData.emergencyContact.relationship})`,
-          source: 'firebase'
-        });
+      if (firebaseUser.selfSupplyLogs && Array.isArray(firebaseUser.selfSupplyLogs)) {
+        profile.selfSupplyLogs = firebaseUser.selfSupplyLogs;
+        sourceBreakdown.push({ field: 'selfSupplyLogs', value: `${firebaseUser.selfSupplyLogs.length} entries`, source: 'firebase' });
       }
-
-      // Extract basic info from Firebase if available
-      if (firebaseData.displayName && !profile.name) {
-        profile.name = firebaseData.displayName;
-        sourceBreakdown.push({
-          field: 'name',
-          value: firebaseData.displayName,
-          source: 'firebase'
-        });
+      
+      if (firebaseUser.lastAppointment) {
+        profile.lastAppointment = firebaseUser.lastAppointment;
+        sourceBreakdown.push({ field: 'lastAppointment', value: `${firebaseUser.lastAppointment.date || firebaseUser.lastAppointment.datetime}`, source: 'firebase' });
       }
-
-      if (firebaseData.email && !profile.email) {
-        profile.email = firebaseData.email;
-        sourceBreakdown.push({
-          field: 'email',
-          value: firebaseData.email,
-          source: 'firebase'
-        });
+      
+      if (firebaseUser.nextAppointment) {
+        profile.nextAppointment = firebaseUser.nextAppointment;
+        sourceBreakdown.push({ field: 'nextAppointment', value: `${firebaseUser.nextAppointment.date || firebaseUser.nextAppointment.datetime}`, source: 'firebase' });
       }
-
-      // Add missing fields from Firebase with proper mapping
-      if (firebaseData.uid && !profile.userId) {
-        profile.userId = firebaseData.uid;
-        sourceBreakdown.push({
-          field: 'userId',
-          value: firebaseData.uid,
-          source: 'firebase'
-        });
+      
+      // NEW REQUIRED FIELDS: treatments and healthSummary
+      if (firebaseUser.treatments && Array.isArray(firebaseUser.treatments)) {
+        profile.treatments = firebaseUser.treatments;
+        sourceBreakdown.push({ field: 'treatments', value: `${firebaseUser.treatments.length} treatments`, source: 'firebase' });
       }
-
-      // Ensure medicineCount is calculated if medicine exists
-      if (firebaseData.medicine && !profile.medicineCount) {
-        const count = Array.isArray(firebaseData.medicine) ? firebaseData.medicine.length : 1;
-        profile.medicineCount = count;
-        sourceBreakdown.push({
-          field: 'medicineCount',
-          value: count.toString(),
-          source: 'firebase'
-        });
+      
+      if (firebaseUser.healthSummary) {
+        profile.healthSummary = firebaseUser.healthSummary;
+        sourceBreakdown.push({ field: 'healthSummary', value: 'Health summary available', source: 'firebase' });
       }
     }
 
-    // Handle errors from sources (include them in source breakdown for debugging)
+    // Add error information for sources that failed
     Object.entries(sources).forEach(([source, response]) => {
       if (response.error) {
-        sourceBreakdown.push({
-          field: 'error',
-          value: response.error,
-          source: source
-        });
+        sourceBreakdown.push({ field: 'error', value: response.error, source: source });
       }
     });
 
-    // Always include source breakdown
     profile.sourceBreakdown = sourceBreakdown;
 
-    // If no real data was found, return fallback with suggestions
     if (!hasRealData) {
-      console.log('❌ No real data found in any MCP source, providing fallback with suggestions');
-      // We need the original query to provide proper fallback
-      // This will be handled by the caller method
-      return profile;
+      throw new Error(`No real data available for user: ${query}`);
     }
 
     return profile;
   }
 
   /**
-   * Get fallback profile for invalid or problematic queries
-   * Returns completely empty profile for users not found
+   * Convert Chargebee item_price_id to human-readable plan name
    */
-  /**
-   * Get health status
-   */
+  private formatPlanName(itemPriceId: string): string {
+    // Map of known plan IDs to readable names
+    const planNameMap: { [key: string]: string } = {
+      'clivi-zero-ozempic-1mg-MXN-Monthly': 'Plan Zero + Ozempic 1mg Mensual',
+      'zero-pro-wegovy-050-MXN-Monthly': 'Zero Pro + Wegovy 0.5mg Mensual',
+      'clivi-zero-pro-b2c-MXN-Monthly': 'Clivi Zero Pro B2C Mensual',
+      'clivi-zero-pro-b2c-MXN-Yearly': 'Clivi Zero Pro B2C Anual'
+    };
+
+    return planNameMap[itemPriceId] || itemPriceId;
+  }
+
   async getHealth(): Promise<string> {
     return 'MCP Orchestrator is healthy! 🚀';
   }
 }
 
-// Export singleton instance
+// Create singleton instance
 export const userProfileService = new UserProfileService();

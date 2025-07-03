@@ -21,7 +21,8 @@ yarn-error.log*
 *.swp
 *.swo
 *~
-
+*.json
+.json
 # OS
 .DS_Store
 Thumbs.db
@@ -43,10 +44,14 @@ coverage/
 .firebase/
 firebase-debug.log
 .firebaserc
+firestore/dtwo-firebase-adminsdk-*.json
 
 # Docker
 Dockerfile.local
 docker-compose.override.yml
+
+# Archived files
+archived_files/
 
 demo*.sh
 

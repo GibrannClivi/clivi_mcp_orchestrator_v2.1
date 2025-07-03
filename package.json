@@ -1,6 +1,6 @@
 {
   "name": "mcp-orchestrator-v1",
-  "version": "1.0.0",
+  "version": "2.5.0",
   "description": "AI-driven GraphQL orchestrator for Chargebee, HubSpot, and Firebase using official MCP servers",
   "main": "dist/server.js",
   "type": "commonjs",

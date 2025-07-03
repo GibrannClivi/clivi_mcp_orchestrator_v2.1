@@ -4,8 +4,8 @@
  */
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
-import { config } from '../config/index.js';
-import { QueryType } from '../utils/queryDetector.js';
+import { config } from '../config';
+import { QueryType } from '../utils/queryDetector';
 
 /**
  * Direct API client for Chargebee - ONLY real data
@@ -214,16 +214,11 @@ class FirebaseAPIClient {
       // Import Firebase Admin dynamically
       const admin = await import('firebase-admin');
       const path = await import('path');
-      const fs = await import('fs');
       
       // Initialize Firebase Admin if not already initialized
       if (!admin.apps.length) {
-        // Use absolute path from project root
-        const credentialsPath = path.join(process.cwd(), 'firestore/dtwo-firebase-adminsdk-ws8j9-0b9683f4ba.json');
-        
-        // Read and parse JSON file
-        const serviceAccount = JSON.parse(fs.readFileSync(credentialsPath, 'utf8'));
-        
+        const credentialsPath = path.resolve(__dirname, '../../firestore/dtwo-firebase-adminsdk-ws8j9-0b9683f4ba.json');
+        const serviceAccount = require(credentialsPath);
         admin.initializeApp({
           credential: admin.credential.cert(serviceAccount),
           projectId: this.projectId

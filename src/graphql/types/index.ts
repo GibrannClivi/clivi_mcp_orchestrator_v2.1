@@ -62,6 +62,7 @@ export interface UserProfile {
   
   // Medical Info (Firebase)
   userId?: string;
+  emailAdress?: string; // Important field from Firebase for user profile confirmation
   planStatus?: string;
   medicalPlan?: string;
   medicine?: string[];
@@ -71,6 +72,8 @@ export interface UserProfile {
   nextAppointment?: Appointment;
   allergies?: string[];
   emergencyContact?: EmergencyContact;
+  treatments?: any[]; // Array of treatment objects
+  healthSummary?: any; // Health summary object
   
   // System Info
   sourceBreakdown?: FieldSource[];

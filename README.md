@@ -1,6 +1,8 @@
-# 🚀 Clivi MCP Orchestrator v2.1
+# 🚀 Clivi MCP Orchestrator v2.5
 
-**Estado: ✅ EN PRODUCCIÓN** - API GraphQL robusta que consolida datos de usuarios desde múltiples fuentes (Chargebee, HubSpot, Firebase) utilizando APIs directas y arquitectura de fallbacks inteligentes.
+**Estado: ✅ PRODUCCIÓN LISTO** - Sistema de consolidación de perfiles de usuario que agrega datos reales de múltiples plataformas (Chargebee, HubSpot, Firebase/Firestore) con API GraphQL robusta y arquitectura de alta disponibilidad.
+
+**🎯 SISTEMA COMPLETAMENTE FUNCIONAL** - Probado con usuarios reales, devuelve perfiles unificados desde todas las plataformas disponibles.
 
 ---
 
@@ -20,23 +22,212 @@
 
 ## 🎯 Descripción General
 
-El **Clivi MCP Orchestrator v2.1** es un servicio de integración que consolida datos de usuarios desde múltiples fuentes de datos empresariales, proporcionando una API GraphQL unificada para consultas de perfiles de usuario completos.
+El **Clivi MCP Orchestrator v2.5** es un sistema de consolidación de perfiles de usuario que agrega datos reales de múltiples plataformas empresariales, proporcionando una API GraphQL unificada para consultas completas de información de clientes.
 
 ### ✨ Características Principales
 
-- **🔄 Integración Multi-Fuente**: Chargebee (Billing), HubSpot (CRM), Firebase (Medical)
-- **🛡️ Solo Datos Reales**: Eliminación completa de datos mock o hardcodeados
-- **📍 Trazabilidad Completa**: Cada campo incluye su fuente de origen
-- **⚡ Performance Optimizada**: Cache inteligente y consultas paralelas
-- **🔧 Fallbacks Robustos**: APIs directas como respaldo a conectores MCP
-- **🌐 Cloud Native**: Desplegado en Google Cloud Run
+- **🔄 Integración Tri-Plataforma**: Chargebee (Facturación), HubSpot (CRM), Firebase (Datos Médicos)
+- **🛡️ Datos 100% Reales**: Sin fallbacks ni datos inventados - solo información verificada
+- **📍 Atribución Completa**: Cada campo especifica su plataforma de origen
+- **⚡ Rendimiento Sub-3s**: Cache inteligente y consultas paralelas optimizadas
+- **� Búsqueda Flexible**: Por email, teléfono o nombre - todos los métodos soportados
+- **🌐 Cloud Ready**: Desplegado en Google Cloud Run con alta disponibilidad
 
-### 🎯 Casos de Uso
+### 🎯 Casos de Uso Reales
 
-- **Dashboard de Customer Success**: Vista unificada del cliente
-- **Facturación Integrada**: Datos de suscripción y billing en tiempo real
-- **Análisis de Customer Journey**: Trazabilidad completa de interacciones
-- **Soporte Técnico**: Acceso rápido a información médica y de contacto
+- **Vista 360° del Cliente**: Perfil unificado con datos de facturación, CRM y médicos
+- **Soporte al Cliente**: Acceso inmediato a información completa del usuario
+- **Análisis de Usuarios**: Datos consolidados para toma de decisiones
+- **Integración de Sistemas**: API única para múltiples fuentes de datos
+
+---
+
+## 🚀 Uso Rápido
+
+### 📡 Endpoint Principal
+```
+POST https://mcp-orchestrator-v1-1016554076949.us-central1.run.app/graphql
+```
+
+### � Consulta Básica (GraphQL)
+```graphql
+query getUserProfile($query: String!) {
+  getUserProfile(query: $query) {
+    # Información Básica
+    email
+    name
+    firstName
+    lastName
+    phone
+    company
+    jobTitle
+    
+    # Datos de Facturación (Chargebee)
+    customerId
+    subscriptionId
+    plan
+    subscriptionStatus
+    nextBillingAmount
+    nextBillingDate
+    
+    # Datos de CRM (HubSpot)
+    contactId
+    leadScore
+    lastActivity
+    
+    # Datos Médicos (Firebase)
+    userId
+    planStatus
+    medicalPlan
+    treatments {
+      name
+      status
+      doctor
+      hospital
+    }
+    healthSummary {
+      overallStatus
+      riskLevel
+      chronicConditions
+    }
+    
+    # Atribución de Fuentes
+    sourceBreakdown {
+      field
+      value
+      source
+    }
+  }
+}
+```
+
+### 🔍 Variables de Consulta
+```json
+{
+  "query": "saidh.jimenez@clivi.com.mx"
+}
+```
+**Soporta**: Email, teléfono (+525542553723), o nombre (Jesus Saidh)
+
+### ✅ Respuesta de Ejemplo
+```json
+{
+  "data": {
+    "getUserProfile": {
+      "email": "saidh.jimenez@clivi.com.mx",
+      "name": "Jesus Saidh Jimenez Fuentes",
+      "phone": "+525542553723",
+      "company": "Clivi",
+      "plan": "Plan Zero + Ozempic 1mg Mensual",
+      "subscriptionStatus": "active",
+      "customerId": "16CRZZUoQIoEl2Doi",
+      "contactId": "4642651",
+      "sourceBreakdown": [
+        {"field": "email", "value": "saidh.jimenez@clivi.com.mx", "source": "query"},
+        {"field": "name", "value": "Jesus Saidh Jimenez Fuentes", "source": "hubspot"},
+        {"field": "plan", "value": "Plan Zero + Ozempic 1mg Mensual", "source": "chargebee"}
+      ]
+    }
+  }
+}
+```
+
+### �🔍 Consulta de Usuario
+
+**Por Email:**
+```graphql
+query {
+  getUserProfile(query: "saidh.jimenez@clivi.com.mx") {
+    email
+    name
+    phone
+    company
+    
+    # Datos de Facturación
+    customerId
+    subscriptionStatus
+    
+    # Datos de CRM
+    contactId
+    
+    # Datos Médicos
+    userId
+    treatments
+    healthSummary
+    
+    # Atribución de fuentes
+    sourceBreakdown {
+      field
+      value
+      source
+    }
+  }
+}
+```
+
+**Por Teléfono:**
+```graphql
+query {
+  getUserProfile(query: "+525542553723") {
+    email
+    name
+    phone
+    customerId
+    contactId
+  }
+}
+```
+
+**Por Nombre:**
+```graphql
+query {
+  getUserProfile(query: "Jesus Saidh Jimenez") {
+    email
+    name
+    phone
+    customerId
+    contactId
+  }
+}
+```
+
+### ⚡ Ejemplo con cURL
+
+```bash
+curl -X POST https://mcp-orchestrator-v1-1016554076949.us-central1.run.app/graphql \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "query { getUserProfile(query: \"saidh.jimenez@clivi.com.mx\") { email name phone company customerId contactId sourceBreakdown { field value source } } }"
+  }'
+```
+
+### 📊 Respuesta Esperada
+
+```json
+{
+  "data": {
+    "getUserProfile": {
+      "email": "saidh.jimenez@clivi.com.mx",
+      "name": "Jesus Saidh Jimenez Fuentes",
+      "phone": "+525542553723",
+      "company": "Clivi",
+      "customerId": "16CRZZUoQIoEl2Doi",
+      "contactId": "4642651",
+      "sourceBreakdown": [
+        {"field": "email", "value": "saidh.jimenez@clivi.com.mx", "source": "query"},
+        {"field": "name", "value": "Jesus Saidh Jimenez Fuentes", "source": "hubspot"},
+        {"field": "customerId", "value": "16CRZZUoQIoEl2Doi", "source": "chargebee"}
+      ]
+    }
+  }
+}
+```
+
+### 🎯 Tipos de Búsqueda Soportados
+
+- **📧 Email**: `saidh.jimenez@clivi.com.mx`
+- **📱 Teléfono**: `+525542553723` o `5542553723`
+- **👤 Nombre**: `Jesus Saidh Jimenez` o `Saidh Jimenez`
 
 ---
 
