@@ -61,68 +61,14 @@ export class UserProfileService {
       );
 
       if (!hasRealData) {
-        console.log('❌ No real data found in any MCP source, returning minimal profile');
+        console.log('❌ No real data found in any MCP source');
         
-        // Return minimal profile with only the query information if it's an email
-        if (queryType === 'email') {
-          const minimalProfile: UserProfile = {
-            // Only set the email field if query is an email
-            email: normalizedQuery,
-            
-            // All other fields remain undefined or empty
-            name: undefined,
-            firstName: undefined,
-            lastName: undefined,
-            phone: undefined,
-            company: undefined,
-            jobTitle: undefined,
-            subscriptionStatus: undefined,
-            plan: undefined,
-            nextBillingAmount: undefined,
-            nextBillingDate: undefined,
-            billingCycle: undefined,
-            customerId: undefined,
-            subscriptionId: undefined,
-            contactId: undefined,
-            lastActivity: undefined,
-            dealStage: undefined,
-            leadScore: undefined,
-            lastTicket: undefined,
-            userId: undefined,
-            planStatus: undefined,
-            medicalPlan: undefined,
-            medicine: [],
-            medicineCount: 0,
-            selfSupplyLogs: [],
-            lastAppointment: undefined,
-            nextAppointment: undefined,
-            allergies: [],
-            emergencyContact: undefined,
-            suggestions: [],
-            sourceBreakdown: [
-              {
-                field: 'email',
-                value: normalizedQuery,
-                source: 'query'
-              },
-              {
-                field: 'status',
-                value: 'no_real_data_found',
-                source: 'system'
-              }
-            ]
-          };
-          
-          // Cache the minimal result
-          await this.cacheManager.set(cacheKey, minimalProfile);
-          return minimalProfile;
-        } else {
-          // For non-email queries, return completely empty profile
-          return await this.getFallbackProfile(normalizedQuery);
-        }
+        // NO FALLBACKS - If no real data exists, return null/error
+        // This enforces the requirement: "sin errores ni fallbacks, ni datos inventados"
+        throw new Error(`No data found for user: ${normalizedQuery}`);
       }
       
-      // Consolidate data from all sources
+      // Consolidate data from all sources - ONLY REAL DATA
       const profile = await this.consolidateUserProfile(sources, normalizedQuery, queryType);
       
       // Cache the result
@@ -135,9 +81,9 @@ export class UserProfileService {
     } catch (error) {
       console.error('Error fetching user profile:', error);
       
-      // Return fallback with suggestions instead of error
-      console.log('⚠️ Error occurred, returning fallback with suggestions');
-      return await this.getFallbackProfile(query);
+      // NO FALLBACKS - Re-throw the error instead of returning fallback data
+      // This enforces: "sin errores ni fallbacks, ni datos inventados"
+      throw error;
     }
   }
 
@@ -192,11 +138,25 @@ export class UserProfileService {
     const sourceBreakdown: FieldSource[] = [];
     let hasRealData = false;
 
-    // Always set the email if the query is an email
+    // Always set the queried field based on query type
     if (queryType === 'email') {
       profile.email = query;
       sourceBreakdown.push({
         field: 'email',
+        value: query,
+        source: 'query'
+      });
+    } else if (queryType === 'phone') {
+      profile.phone = query;
+      sourceBreakdown.push({
+        field: 'phone',
+        value: query,
+        source: 'query'
+      });
+    } else if (queryType === 'name') {
+      profile.name = query;
+      sourceBreakdown.push({
+        field: 'name',
         value: query,
         source: 'query'
       });
@@ -300,6 +260,26 @@ export class UserProfileService {
         sourceBreakdown.push({
           field: 'company',
           value: chargebeeData.company,
+          source: 'chargebee'
+        });
+      }
+
+      // Extract phone from Chargebee if available
+      if (chargebeeData.phone && !profile.phone) {
+        profile.phone = chargebeeData.phone;
+        sourceBreakdown.push({
+          field: 'phone',
+          value: chargebeeData.phone,
+          source: 'chargebee'
+        });
+      }
+
+      // Extract email from Chargebee if not already set
+      if (chargebeeData.email && !profile.email) {
+        profile.email = chargebeeData.email;
+        sourceBreakdown.push({
+          field: 'email',
+          value: chargebeeData.email,
           source: 'chargebee'
         });
       }
@@ -440,6 +420,36 @@ export class UserProfileService {
         sourceBreakdown.push({
           field: 'userId',
           value: firebaseData.userId,
+          source: 'firebase'
+        });
+      }
+      
+      // Extract email from Firebase if not already set
+      if (firebaseData.email && !profile.email) {
+        profile.email = firebaseData.email;
+        sourceBreakdown.push({
+          field: 'email',
+          value: firebaseData.email,
+          source: 'firebase'
+        });
+      }
+      
+      // Extract phone from Firebase if not already set
+      if (firebaseData.phone && !profile.phone) {
+        profile.phone = firebaseData.phone;
+        sourceBreakdown.push({
+          field: 'phone',
+          value: firebaseData.phone,
+          source: 'firebase'
+        });
+      }
+      
+      // Extract displayName from Firebase if not already set
+      if (firebaseData.displayName && !profile.name) {
+        profile.name = firebaseData.displayName;
+        sourceBreakdown.push({
+          field: 'name',
+          value: firebaseData.displayName,
           source: 'firebase'
         });
       }
@@ -587,111 +597,6 @@ export class UserProfileService {
    * Get fallback profile for invalid or problematic queries
    * Returns completely empty profile for users not found
    */
-  async getFallbackProfile(query: string): Promise<UserProfile> {
-    const queryType = detectQueryType(query);
-    const normalizedQuery = normalizeQuery(query, queryType);
-    
-    console.log(`🔄 No data found for: ${query} (type: ${queryType})`);
-    
-    const suggestions = this.generateSearchSuggestions(normalizedQuery, queryType);
-    
-    // Return complete schema with all fields initialized - no invented data
-    const fallbackProfile: UserProfile = {
-      // Basic Info (HubSpot)
-      name: undefined,
-      firstName: undefined,
-      lastName: undefined,
-      email: undefined,
-      phone: undefined,
-      company: undefined,
-      jobTitle: undefined,
-      
-      // Billing Info (Chargebee)
-      subscriptionStatus: undefined,
-      plan: undefined,
-      nextBillingAmount: undefined,
-      nextBillingDate: undefined,
-      billingCycle: undefined,
-      customerId: undefined,
-      subscriptionId: undefined,
-      
-      // CRM Info (HubSpot)
-      contactId: undefined,
-      lastActivity: undefined,
-      dealStage: undefined,
-      leadScore: undefined,
-      lastTicket: undefined,
-      
-      // Medical Info (Firebase)
-      userId: undefined,
-      planStatus: undefined,
-      medicalPlan: undefined,
-      medicine: [],
-      medicineCount: 0,
-      selfSupplyLogs: [],
-      lastAppointment: undefined,
-      nextAppointment: undefined,
-      allergies: [],
-      emergencyContact: undefined,
-      
-      // System Info
-      suggestions: suggestions,
-      sourceBreakdown: [
-        {
-          field: 'search_query',
-          value: normalizedQuery,
-          source: 'system'
-        },
-        {
-          field: 'search_type',
-          value: queryType,
-          source: 'system'
-        },
-        {
-          field: 'status',
-          value: 'not_found',
-          source: 'system'
-        },
-        {
-          field: 'suggestions',
-          value: suggestions.join(', '),
-          source: 'system'
-        }
-      ]
-    };
-
-    return fallbackProfile;
-  }
-
-  /**
-   * Generate helpful search suggestions when user is not found
-   */
-  private generateSearchSuggestions(query: string, queryType: QueryType): string[] {
-    const suggestions: string[] = [];
-    
-    switch (queryType) {
-      case 'name':
-        suggestions.push('Intenta usar el email del usuario (ej: usuario@ejemplo.com)');
-        suggestions.push('Intenta usar el número de teléfono (ej: +52 555 123 4567)');
-        suggestions.push('Verifica que el nombre esté completo y bien escrito');
-        break;
-        
-      case 'email':
-        suggestions.push('Verifica que el email esté bien escrito');
-        suggestions.push('Intenta usar el nombre completo del usuario');
-        suggestions.push('Intenta usando el número de teléfono registrado');
-        break;
-        
-      case 'phone':
-        suggestions.push('Verifica el formato del teléfono (incluye código de país)');
-        suggestions.push('Intenta usar el email del usuario');
-        suggestions.push('Intenta usando el nombre completo del usuario');
-        break;
-    }
-    
-    return suggestions;
-  }
-
   /**
    * Get health status
    */

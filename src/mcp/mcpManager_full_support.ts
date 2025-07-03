@@ -55,56 +55,7 @@ class ChargebeeAPIClient {
       }
 
       const data = await response.json() as any;
-      console.log(`✅ Chargebee API: Raw response contains ${data.list?.length || 0} customers`);
-      
-      // CRITICAL: Validate that the returned data matches the exact query
-      if (data.list && data.list.length > 0) {
-        const validCustomers = data.list.filter((item: any) => {
-          const customer = item.customer;
-          
-          switch (queryType) {
-            case 'email':
-              return customer.email && customer.email.toLowerCase() === query.toLowerCase();
-            case 'phone':
-              // Phone validation - normalize both for comparison
-              const customerPhone = customer.phone;
-              if (!customerPhone) return false;
-              
-              // Normalize both phone numbers for comparison
-              const normalizePhone = (phone: string) => phone.replace(/[^\d+]/g, '');
-              return normalizePhone(customerPhone) === normalizePhone(query);
-            case 'name':
-              // STRICT Name validation - exact matches only to prevent data contamination
-              const firstName = customer.first_name || '';
-              const lastName = customer.last_name || '';
-              const fullName = `${firstName} ${lastName}`.trim();
-              
-              const queryLower = query.toLowerCase().trim();
-              const firstNameLower = firstName.toLowerCase().trim();
-              const lastNameLower = lastName.toLowerCase().trim();
-              const fullNameLower = fullName.toLowerCase().trim();
-              
-              // Check for exact matches only
-              return (
-                queryLower === firstNameLower ||
-                queryLower === lastNameLower ||
-                queryLower === fullNameLower ||
-                // Allow partial name matches only if they form complete words
-                (queryLower.includes(' ') && queryLower === fullNameLower)
-              );
-            default:
-              return false;
-          }
-        });
-        
-        if (validCustomers.length > 0) {
-          console.log(`✅ Chargebee API: Found ${validCustomers.length} valid customers matching ${queryType}: ${query}`);
-          return { ...data, list: validCustomers };
-        } else {
-          console.log(`❌ Chargebee API: No customers found matching ${queryType}: ${query} (filtered out ${data.list.length} non-matching results)`);
-          return { list: [] };
-        }
-      }
+      console.log(`✅ Chargebee API: Found ${data.list?.length || 0} customers for ${queryType} search`);
       
       // If searching by name and no results, try splitting the name and searching by first/last
       if (queryType === 'name' && (!data.list || data.list.length === 0)) {
@@ -128,25 +79,8 @@ class ChargebeeAPIClient {
           if (firstNameResponse.ok) {
             const firstNameData = await firstNameResponse.json() as any;
             if (firstNameData.list && firstNameData.list.length > 0) {
-              // STRICT validation for split name results too
-              const validSplitCustomers = firstNameData.list.filter((item: any) => {
-                const customer = item.customer;
-                const custFirstName = (customer.first_name || '').toLowerCase().trim();
-                const custLastName = (customer.last_name || '').toLowerCase().trim();
-                const firstNameLower = firstName.toLowerCase().trim();
-                const lastNameLower = lastName.toLowerCase().trim();
-                
-                // Exact matches only for split names
-                return (
-                  custFirstName === firstNameLower &&
-                  custLastName === lastNameLower
-                );
-              });
-              
-              if (validSplitCustomers.length > 0) {
-                console.log(`✅ Chargebee API: Found ${validSplitCustomers.length} customers by split name validation`);
-                return { ...firstNameData, list: validSplitCustomers };
-              }
+              console.log(`✅ Chargebee API: Found ${firstNameData.list.length} customers by first name`);
+              return firstNameData;
             }
           }
         }
@@ -159,7 +93,7 @@ class ChargebeeAPIClient {
     }
   }
 
-  async getSubscriptions(query: string, queryType: 'email' | 'phone' | 'name', customerId?: string): Promise<any[]> {
+  async getSubscriptions(query: string, queryType: 'email' | 'phone' | 'name'): Promise<any[]> {
     try {
       console.log(`🔍 Chargebee API: Getting subscriptions for ${queryType}: ${query}`);
       
@@ -173,17 +107,13 @@ class ChargebeeAPIClient {
           break;
         case 'name':
           // For names, we need to first find the customer and then get their subscriptions
-          if (customerId) {
+          const customerData = await this.searchCustomer(query, 'name');
+          if (customerData?.list?.length > 0) {
+            const customerId = customerData.list[0].customer.id;
             url = `${this.baseUrl}/subscriptions?customer_id=${encodeURIComponent(customerId)}`;
           } else {
-            const customerData = await this.searchCustomer(query, 'name');
-            if (customerData?.list?.length > 0) {
-              const customer = customerData.list[0].customer;
-              url = `${this.baseUrl}/subscriptions?customer_id=${encodeURIComponent(customer.id)}`;
-            } else {
-              console.log(`❌ No customer found for name: ${query}`);
-              return [];
-            }
+            console.log(`❌ No customer found for name: ${query}`);
+            return [];
           }
           break;
         default:
@@ -204,54 +134,6 @@ class ChargebeeAPIClient {
       }
 
       const data = await response.json() as any;
-      
-      // CRITICAL: Validate that subscriptions belong to the queried customer
-      if (data.list && data.list.length > 0) {
-        let validSubscriptions = data.list;
-        
-        // For email and phone queries, validate that the subscription's customer matches
-        if (queryType === 'email' || queryType === 'phone') {
-          const customerValidation = await Promise.all(
-            data.list.map(async (item: any) => {
-              const subscription = item.subscription;
-              try {
-                // Get customer details for each subscription to validate
-                const customerResponse = await fetch(`${this.baseUrl}/customers/${subscription.customer_id}`, {
-                  method: 'GET',
-                  headers: {
-                    'Authorization': `Basic ${Buffer.from(this.apiKey + ':').toString('base64')}`,
-                    'Accept': 'application/json'
-                  }
-                });
-                
-                if (customerResponse.ok) {
-                  const customerData = await customerResponse.json() as any;
-                  const customer = customerData.customer;
-                  
-                  // Validate customer matches the query
-                  if (queryType === 'email') {
-                    return customer.email && customer.email.toLowerCase() === query.toLowerCase() ? item : null;
-                  } else if (queryType === 'phone') {
-                    const normalizePhone = (phone: string) => phone.replace(/[^\d+]/g, '');
-                    const customerPhone = customer.phone;
-                    return customerPhone && normalizePhone(customerPhone) === normalizePhone(query) ? item : null;
-                  }
-                }
-                return null;
-              } catch (error) {
-                console.log(`⚠️ Could not validate customer for subscription ${subscription.id}`);
-                return null;
-              }
-            })
-          );
-          
-          validSubscriptions = customerValidation.filter(item => item !== null);
-        }
-        
-        console.log(`✅ Chargebee API: Found ${validSubscriptions.length} valid subscriptions for ${queryType} search (filtered from ${data.list.length})`);
-        return validSubscriptions;
-      }
-      
       console.log(`✅ Chargebee API: Found ${data.list?.length || 0} subscriptions for ${queryType} search`);
       return data.list || [];
     } catch (error) {
@@ -734,8 +616,8 @@ export class MCPManager {
         const customer = customerData.list[0].customer;
         console.log(`✅ Found Chargebee customer via direct API: ${customer.email || customer.phone || customer.first_name}`);
         
-        // Get subscription data using the same query type and customer ID for validation
-        const subscriptions = await this.chargebeeAPI.getSubscriptions(query, queryType, customer.id);
+        // Get subscription data using the same query type
+        const subscriptions = await this.chargebeeAPI.getSubscriptions(query, queryType);
         let subscriptionData = {};
         
         if (subscriptions.length > 0) {

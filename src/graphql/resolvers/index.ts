@@ -8,30 +8,22 @@ export const resolvers = {
   Query: {
     /**
      * Get user profile by query (email, phone, or name)
-     * Enhanced with better error handling and fallbacks
+     * NO FALLBACKS - Only real data or error
      */
     async getUserProfile(_parent: unknown, { query }: { query: string }) {
       try {
-        // Handle empty or very short queries gracefully
+        // Handle empty queries - NO FALLBACKS, return error
         if (!query || query.trim().length === 0) {
-          console.warn('Empty query received, returning fallback data');
-          return await userProfileService.getFallbackProfile('');
+          throw new Error('Query parameter is required and cannot be empty');
         }
 
+        // Get user profile - will throw error if no real data found
         return await userProfileService.getUserProfile(query);
       } catch (error) {
         console.error('GraphQL getUserProfile error:', error);
         
-        // For validation errors, try to provide fallback data instead of throwing
-        if (error instanceof Error && error.message.includes('Invalid')) {
-          console.warn('Invalid query format, providing fallback data:', query);
-          try {
-            return await userProfileService.getFallbackProfile(query);
-          } catch (fallbackError) {
-            console.error('Fallback also failed:', fallbackError);
-          }
-        }
-        
+        // NO FALLBACKS - Always throw the error
+        // This enforces: "sin errores ni fallbacks, ni datos inventados"
         throw new Error(error instanceof Error ? error.message : 'Failed to get user profile');
       }
     },
