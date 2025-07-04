@@ -24,20 +24,9 @@ class ChargebeeAPIClient {
     try {
       console.log(`🔍 Chargebee API: Searching for customer with ${queryType}: ${query}`);
       
-      let url: string;
-      switch (queryType) {
-        case 'email':
-          url = `${this.baseUrl}/customers?email=${encodeURIComponent(query)}`;
-          break;
-        case 'phone':
-          url = `${this.baseUrl}/customers?phone=${encodeURIComponent(query)}`;
-          break;
-        case 'name':
-          url = `${this.baseUrl}/customers?first_name=${encodeURIComponent(query)}`;
-          break;
-        default:
-          url = `${this.baseUrl}/customers?email=${encodeURIComponent(query)}`;
-      }
+      // NUEVA ESTRATEGIA: Listar customers y filtrar manualmente 
+      // porque el filtro de email de Chargebee no funciona correctamente
+      const url = `${this.baseUrl}/customers?limit=100`;
       
       const response = await fetch(url, {
         method: 'GET',
@@ -55,13 +44,43 @@ class ChargebeeAPIClient {
       const data = await response.json() as any;
       
       if (!data.list || data.list.length === 0) {
-        console.log(`❌ Chargebee API: No customer found for ${queryType}: ${query}`);
+        console.log(`❌ Chargebee API: No customers found`);
         return null;
       }
 
-      const customer = data.list[0].customer;
-      console.log(`✅ Chargebee API: Found real customer ${customer.email}`);
-      return customer;
+      // FILTRAR MANUALMENTE por coincidencia exacta
+      let targetCustomer = null;
+      
+      for (const item of data.list) {
+        const customer = item.customer;
+        let isExactMatch = false;
+        
+        switch (queryType) {
+          case 'email':
+            isExactMatch = customer.email && customer.email.toLowerCase() === query.toLowerCase();
+            break;
+          case 'phone':
+            const normalizePhone = (phone: string) => phone.replace(/[^\d+]/g, '');
+            isExactMatch = customer.phone && normalizePhone(customer.phone) === normalizePhone(query);
+            break;
+          case 'name':
+            isExactMatch = customer.first_name && customer.first_name.toLowerCase().includes(query.toLowerCase());
+            break;
+        }
+        
+        if (isExactMatch) {
+          targetCustomer = customer;
+          break;
+        }
+      }
+      
+      if (!targetCustomer) {
+        console.log(`❌ Chargebee API: No customer found with exact match for ${queryType}: ${query}`);
+        return null;
+      }
+
+      console.log(`✅ Chargebee API: Found real customer ${targetCustomer.email}`);
+      return targetCustomer;
     } catch (error) {
       console.error('Chargebee API error:', error);
       return null;
@@ -70,6 +89,7 @@ class ChargebeeAPIClient {
 
   async getSubscriptions(customerId: string): Promise<any[]> {
     try {
+      console.log(`🔍 Chargebee API: Getting subscriptions for customer ${customerId}`);
       const url = `${this.baseUrl}/subscriptions?customer_id=${customerId}`;
       
       const response = await fetch(url, {
@@ -81,11 +101,21 @@ class ChargebeeAPIClient {
       });
 
       if (!response.ok) {
+        console.log(`❌ Chargebee API: Failed to get subscriptions - HTTP ${response.status}`);
         return [];
       }
 
       const data = await response.json() as any;
-      return data.list || [];
+      const subscriptions = data.list || [];
+      
+      // FILTRAR SOLO SUSCRIPCIONES DEL CUSTOMER ESPECÍFICO
+      const filteredSubscriptions = subscriptions.filter((item: any) => 
+        item.subscription && item.subscription.customer_id === customerId
+      );
+      
+      console.log(`✅ Chargebee API: Found ${filteredSubscriptions.length} subscriptions for customer ${customerId}`);
+      
+      return filteredSubscriptions;
     } catch (error) {
       console.error('Chargebee subscriptions error:', error);
       return [];
@@ -180,6 +210,31 @@ class HubSpotAPIClient {
       }
 
       const contact = data.results[0];
+      
+      // VALIDACIÓN CRÍTICA: Verificar coincidencia exacta
+      let isExactMatch = false;
+      switch (queryType) {
+        case 'email':
+          isExactMatch = contact.properties.email && contact.properties.email.toLowerCase() === query.toLowerCase();
+          break;
+        case 'phone':
+          const normalizePhone = (phone: string) => phone.replace(/[^\d+]/g, '');
+          isExactMatch = contact.properties.phone && normalizePhone(contact.properties.phone) === normalizePhone(query);
+          break;
+        case 'name':
+          const queryLower = query.toLowerCase();
+          const firstName = (contact.properties.firstname || '').toLowerCase();
+          const lastName = (contact.properties.lastname || '').toLowerCase();
+          isExactMatch = firstName.includes(queryLower) || lastName.includes(queryLower) || 
+                        queryLower.includes(firstName) || queryLower.includes(lastName);
+          break;
+      }
+      
+      if (!isExactMatch) {
+        console.log(`❌ HubSpot API: Contact found but doesn't match query. Found: ${contact.properties.email}, Searched: ${query}`);
+        return null;
+      }
+
       console.log(`✅ HubSpot API: Found real contact ${contact.properties.email}`);
       return contact;
     } catch (error) {
@@ -194,138 +249,126 @@ class HubSpotAPIClient {
  * No Firebase Auth needed - just like Chargebee and HubSpot!
  */
 class FirebaseAPIClient {
-  private credentialsPath: string | null;
-  private projectId: string | null;
 
   constructor() {
-    this.credentialsPath = config.firebase?.credentialsPath || null;
-    this.projectId = config.firebase?.projectId || null;
+    // No configuration needed - will auto-detect credentials
   }
 
   async searchUser(query: string, queryType: 'email' | 'phone' | 'name'): Promise<any> {
     try {
       console.log(`🔍 Firebase API: Searching Firestore for user with ${queryType}: ${query}`);
       
-      if (!this.credentialsPath || !this.projectId) {
-        console.log(`⚠️  Firebase credentials not configured`);
-        return null;
-      }
-
       // Import Firebase Admin dynamically
       const admin = await import('firebase-admin');
       const path = await import('path');
       const fs = await import('fs');
       
       // Initialize Firebase Admin if not already initialized
-      if (!admin.apps.length) {
-        // Use absolute path from project root
-        const credentialsPath = path.join(process.cwd(), 'firestore/dtwo-firebase-adminsdk-ws8j9-0b9683f4ba.json');
+      if (!admin.default.apps || admin.default.apps.length === 0) {
+        console.log('🔧 Firebase API: Initializing Firebase Admin...');
         
-        // Read and parse JSON file
-        const serviceAccount = JSON.parse(fs.readFileSync(credentialsPath, 'utf8'));
-        
-        admin.initializeApp({
-          credential: admin.credential.cert(serviceAccount),
-          projectId: this.projectId
-        });
-      }
-
-      const db = admin.firestore();
-      let firestoreDoc = null;
-      let firestoreData = null;
-      
-      // Search ONLY in Firestore based on query type - SIMPLE like Chargebee/HubSpot
-      switch (queryType) {
-        case 'email':
-          const emailQuery = await db.collection('users')
-            .where('email', '==', query)
-            .limit(1)
-            .get();
-          
-          if (!emailQuery.empty) {
-            firestoreDoc = emailQuery.docs[0];
-            firestoreData = firestoreDoc.data();
-            console.log(`✅ Firebase API: Found user in Firestore by email`);
-          }
-          break;
-          
-        case 'phone':
-          // Try both phoneNumber and phone fields
-          let phoneQuery = await db.collection('users')
-            .where('phoneNumber', '==', query)
-            .limit(1)
-            .get();
-          
-          if (phoneQuery.empty) {
-            phoneQuery = await db.collection('users')
-              .where('phone', '==', query)
-              .limit(1)
-              .get();
-          }
-          
-          if (!phoneQuery.empty) {
-            firestoreDoc = phoneQuery.docs[0];
-            firestoreData = firestoreDoc.data();
-            console.log(`✅ Firebase API: Found user in Firestore by phone`);
-          }
-          break;
-          
-        case 'name':
-          // Try exact match first on displayName
-          let nameQuery = await db.collection('users')
-            .where('displayName', '==', query)
-            .limit(1)
-            .get();
-          
-          if (!nameQuery.empty) {
-            firestoreDoc = nameQuery.docs[0];
-            firestoreData = firestoreDoc.data();
-            console.log(`✅ Firebase API: Found user in Firestore by exact displayName`);
+        try {
+          // Try environment variable first (for Cloud Run)
+          if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+            console.log('Using GOOGLE_APPLICATION_CREDENTIALS');
+            admin.default.initializeApp({
+              credential: admin.default.credential.applicationDefault()
+            });
           } else {
-            // Try searching by firstName if no exact match
-            const nameParts = query.toLowerCase().split(' ').filter(part => part.length > 0);
-            if (nameParts.length >= 1) {
-              const firstName = nameParts[0];
-              const firstNameQuery = await db.collection('users')
-                .where('firstName', '==', firstName)
-                .limit(1)
-                .get();
-              
-              if (!firstNameQuery.empty) {
-                firestoreDoc = firstNameQuery.docs[0];
-                firestoreData = firestoreDoc.data();
-                console.log(`✅ Firebase API: Found user in Firestore by firstName`);
-              }
+            // Use local credentials file
+            const credentialsPath = path.join(process.cwd(), 'firestore', 'dtwo-firebase-adminsdk-ws8j9-0b9683f4ba.json');
+            if (fs.existsSync(credentialsPath)) {
+              console.log(`Using local credentials file: ${credentialsPath}`);
+              const serviceAccount = JSON.parse(fs.readFileSync(credentialsPath, 'utf8'));
+              admin.default.initializeApp({
+                credential: admin.default.credential.cert(serviceAccount)
+              });
+            } else {
+              throw new Error('No Firebase credentials found');
             }
           }
-          break;
+          console.log('✅ Firebase Admin initialized successfully');
+        } catch (error) {
+          console.error('❌ Firebase Admin initialization failed:', error);
+          return null;
+        }
       }
+
+      const db = admin.default.firestore();
+      let userDoc = null;
       
-      if (!firestoreDoc || !firestoreData) {
-        console.log(`❌ Firebase API: No user found in Firestore for ${queryType}: ${query}`);
+      // Search based on query type with EXACT MATCH validation
+      if (queryType === 'email') {
+        // First try emailAddress field (correct field in Firestore)
+        const emailAddressQuery = await db.collection('users').where('emailAddress', '==', query).limit(1).get();
+        if (!emailAddressQuery.empty) {
+          userDoc = emailAddressQuery.docs[0];
+          console.log('✅ Found user by emailAddress field');
+        } else {
+          // Fallback to email field
+          const emailQuery = await db.collection('users').where('email', '==', query).limit(1).get();
+          if (!emailQuery.empty) {
+            userDoc = emailQuery.docs[0];
+            console.log('✅ Found user by email field (fallback)');
+          }
+        }
+      } else if (queryType === 'phone') {
+        const phoneQuery = await db.collection('users').where('phoneNumber', '==', query).limit(1).get();
+        if (!phoneQuery.empty) {
+          userDoc = phoneQuery.docs[0];
+          console.log('✅ Found user by phoneNumber field');
+        }
+      } else if (queryType === 'name') {
+        const nameQuery = await db.collection('users').where('nameDisplay', '==', query).limit(1).get();
+        if (!nameQuery.empty) {
+          userDoc = nameQuery.docs[0];
+          console.log('✅ Found user by nameDisplay field');
+        }
+      }
+
+      if (userDoc) {
+        const userData = userDoc.data();
+        
+        // VALIDACIÓN CRÍTICA: Verificar coincidencia exacta
+        let isExactMatch = false;
+        switch (queryType) {
+          case 'email':
+            isExactMatch = (userData.emailAddress && userData.emailAddress.toLowerCase() === query.toLowerCase()) ||
+                          (userData.email && userData.email.toLowerCase() === query.toLowerCase());
+            break;
+          case 'phone':
+            const normalizePhone = (phone: string) => phone.replace(/[^\d+]/g, '');
+            isExactMatch = userData.phoneNumber && normalizePhone(userData.phoneNumber) === normalizePhone(query);
+            break;
+          case 'name':
+            isExactMatch = userData.nameDisplay && userData.nameDisplay.toLowerCase().includes(query.toLowerCase());
+            break;
+        }
+        
+        if (!isExactMatch) {
+          console.log(`❌ Firebase API: User found but doesn't match query. Found: ${userData.emailAddress || userData.email}, Searched: ${query}`);
+          return null;
+        }
+        
+        console.log(`✅ Firebase API: User found - ID: ${userDoc.id}`);
+        
+        return {
+          uid: userDoc.id,
+          email: userData.emailAddress || userData.email,
+          emailAddress: userData.emailAddress,
+          phoneNumber: userData.phoneNumber,
+          displayName: userData.nameDisplay,
+          firstName: userData.nameFirst,
+          lastName: userData.nameLast || userData.lastName,
+          planStatus: userData.planStatus,
+          medicalPlan: userData.medicalPlan,
+          treatments: userData.treatments || [],
+          healthSummary: userData.healthSummary || {}
+        };
+      } else {
+        console.log(`❌ Firebase API: No user found for ${queryType}: ${query}`);
         return null;
       }
-      
-      // Return standardized user object from Firestore data ONLY - SIMPLE!
-      return {
-        uid: firestoreDoc.id,
-        email: firestoreData.email || null,
-        phoneNumber: firestoreData.phoneNumber || firestoreData.phone || null,
-        displayName: firestoreData.displayName || firestoreData.firstName || null,
-        firstName: firestoreData.firstName || null,
-        lastName: firestoreData.lastName || null,
-        // Medical/App specific data
-        planStatus: firestoreData.planStatus || null,
-        medicalPlan: firestoreData.medicalPlan || null,
-        medicine: firestoreData.medicine || [],
-        allergies: firestoreData.allergies || [],
-        emergencyContact: firestoreData.emergencyContact || null,
-        selfSupplyLogs: firestoreData.selfSupplyLogs || [],
-        lastAppointment: firestoreData.lastAppointment || null,
-        nextAppointment: firestoreData.nextAppointment || null,
-        // Include all original Firestore data
-        firestoreData
-      };
     } catch (error: any) {
       console.error(`❌ Firebase API: Error searching for ${queryType}: ${query}`, error.message);
       return null;

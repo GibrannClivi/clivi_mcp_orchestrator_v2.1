@@ -38,7 +38,8 @@
     "firebase-tools": "^14.9.0",
     "graphql": "^16.8.1",
     "libphonenumber-js": "^1.10.51",
-    "node-cache": "^5.1.2"
+    "node-cache": "^5.1.2",
+    "node-fetch": "^3.3.2"
   },
   "devDependencies": {
     "@types/jest": "^29.5.8",

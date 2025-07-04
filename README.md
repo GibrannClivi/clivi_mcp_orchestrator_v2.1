@@ -1,841 +1,382 @@
-# 🚀 Clivi MCP Orchestrator v2.5
+# 🔧 Configuración
 
-**Estado: ✅ PRODUCCIÓN LISTO** - Sistema de consolidación de perfiles de usuario que agrega datos reales de múltiples plataformas (Chargebee, HubSpot, Firebase/Firestore) con API GraphQL robusta y arquitectura de alta disponibilidad.
+## 📝 Variables de Entorno
 
-**🎯 SISTEMA COMPLETAMENTE FUNCIONAL** - Probado con usuarios reales, devuelve perfiles unificados desde todas las plataformas disponibles.
-
----
-
-## 📋 Tabla de Contenidos
-
-- [🎯 Descripción General](#-descripción-general)
-- [🏗️ Arquitectura](#️-arquitectura)
-- [🚀 Inicio Rápido](#-inicio-rápido)
-- [📊 API GraphQL](#-api-graphql)
-- [🔧 Configuración](#-configuración)
-- [🧪 Testing](#-testing)
-- [🌐 Despliegue](#-despliegue)
-- [📈 Monitoreo](#-monitoreo)
-- [🤝 Contribución](#-contribución)
-
----
-
-## 🎯 Descripción General
-
-El **Clivi MCP Orchestrator v2.5** es un sistema de consolidación de perfiles de usuario que agrega datos reales de múltiples plataformas empresariales, proporcionando una API GraphQL unificada para consultas completas de información de clientes.
-
-### ✨ Características Principales
-
-- **🔄 Integración Tri-Plataforma**: Chargebee (Facturación), HubSpot (CRM), Firebase (Datos Médicos)
-- **🛡️ Datos 100% Reales**: Sin fallbacks ni datos inventados - solo información verificada
-- **📍 Atribución Completa**: Cada campo especifica su plataforma de origen
-- **⚡ Rendimiento Sub-3s**: Cache inteligente y consultas paralelas optimizadas
-- **� Búsqueda Flexible**: Por email, teléfono o nombre - todos los métodos soportados
-- **🌐 Cloud Ready**: Desplegado en Google Cloud Run con alta disponibilidad
-
-### 🎯 Casos de Uso Reales
-
-- **Vista 360° del Cliente**: Perfil unificado con datos de facturación, CRM y médicos
-- **Soporte al Cliente**: Acceso inmediato a información completa del usuario
-- **Análisis de Usuarios**: Datos consolidados para toma de decisiones
-- **Integración de Sistemas**: API única para múltiples fuentes de datos
-
----
-
-## 🚀 Uso Rápido
-
-### 📡 Endpoint Principal
-```
-POST https://mcp-orchestrator-v1-1016554076949.us-central1.run.app/graphql
-```
-
-### � Consulta Básica (GraphQL)
-```graphql
-query getUserProfile($query: String!) {
-  getUserProfile(query: $query) {
-    # Información Básica
-    email
-    name
-    firstName
-    lastName
-    phone
-    company
-    jobTitle
-    
-    # Datos de Facturación (Chargebee)
-    customerId
-    subscriptionId
-    plan
-    subscriptionStatus
-    nextBillingAmount
-    nextBillingDate
-    
-    # Datos de CRM (HubSpot)
-    contactId
-    leadScore
-    lastActivity
-    
-    # Datos Médicos (Firebase)
-    userId
-    planStatus
-    medicalPlan
-    treatments {
-      name
-      status
-      doctor
-      hospital
-    }
-    healthSummary {
-      overallStatus
-      riskLevel
-      chronicConditions
-    }
-    
-    # Atribución de Fuentes
-    sourceBreakdown {
-      field
-      value
-      source
-    }
-  }
-}
-```
-
-### 🔍 Variables de Consulta
-```json
-{
-  "query": "saidh.jimenez@clivi.com.mx"
-}
-```
-**Soporta**: Email, teléfono (+525542553723), o nombre (Jesus Saidh)
-
-### ✅ Respuesta de Ejemplo
-```json
-{
-  "data": {
-    "getUserProfile": {
-      "email": "saidh.jimenez@clivi.com.mx",
-      "name": "Jesus Saidh Jimenez Fuentes",
-      "phone": "+525542553723",
-      "company": "Clivi",
-      "plan": "Plan Zero + Ozempic 1mg Mensual",
-      "subscriptionStatus": "active",
-      "customerId": "16CRZZUoQIoEl2Doi",
-      "contactId": "4642651",
-      "sourceBreakdown": [
-        {"field": "email", "value": "saidh.jimenez@clivi.com.mx", "source": "query"},
-        {"field": "name", "value": "Jesus Saidh Jimenez Fuentes", "source": "hubspot"},
-        {"field": "plan", "value": "Plan Zero + Ozempic 1mg Mensual", "source": "chargebee"}
-      ]
-    }
-  }
-}
-```
-
-### �🔍 Consulta de Usuario
-
-**Por Email:**
-```graphql
-query {
-  getUserProfile(query: "saidh.jimenez@clivi.com.mx") {
-    email
-    name
-    phone
-    company
-    
-    # Datos de Facturación
-    customerId
-    subscriptionStatus
-    
-    # Datos de CRM
-    contactId
-    
-    # Datos Médicos
-    userId
-    treatments
-    healthSummary
-    
-    # Atribución de fuentes
-    sourceBreakdown {
-      field
-      value
-      source
-    }
-  }
-}
-```
-
-**Por Teléfono:**
-```graphql
-query {
-  getUserProfile(query: "+525542553723") {
-    email
-    name
-    phone
-    customerId
-    contactId
-  }
-}
-```
-
-**Por Nombre:**
-```graphql
-query {
-  getUserProfile(query: "Jesus Saidh Jimenez") {
-    email
-    name
-    phone
-    customerId
-    contactId
-  }
-}
-```
-
-### ⚡ Ejemplo con cURL
+Crear archivo `.env` en la raíz del proyecto:
 
 ```bash
-curl -X POST https://mcp-orchestrator-v1-1016554076949.us-central1.run.app/graphql \
-  -H "Content-Type: application/json" \
-  -d '{
-    "query": "query { getUserProfile(query: \"saidh.jimenez@clivi.com.mx\") { email name phone company customerId contactId sourceBreakdown { field value source } } }"
-  }'
+# Environment
+ENV=production
+PROJECT_NAME=mcp-orchestrator-v1
+PORT=4000
+
+# Chargebee Configuration
+CHARGEBEE_SITE=tu-sitio-test
+CHARGEBEE_API_KEY=test_xxxxxxxxxxxxxxxxxxxxx
+
+# HubSpot Configuration  
+HUBSPOT_ACCESS_TOKEN=pat-na1-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+HUBSPOT_API_KEY=pat-na1-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+HUBSPOT_PORTAL_ID=tu-portal-id
+
+# Firebase/Firestore Configuration
+FIRESTORE_PROJECT_ID=tu-proyecto-firebase
+FIREBASE_CREDENTIALS=./firestore/tu-archivo-credenciales.json
+GOOGLE_CLOUD_PROJECT=tu-proyecto-firebase
+GOOGLE_APPLICATION_CREDENTIALS=./firestore/tu-archivo-credenciales.json
+
+# MCP Configuration
+USE_REAL_MCP=true
+
+# Cache configuration
+CACHE_TTL_SECONDS=3600
+
+# CORS
+CORS_ALLOW_ORIGINS=*
+
+# GraphQL Development
+GRAPHQL_INTROSPECTION=true
+GRAPHQL_PLAYGROUND=true
 ```
 
-### 📊 Respuesta Esperada
+## 🔑 Obtención de Credenciales
 
-```json
-{
-  "data": {
-    "getUserProfile": {
-      "email": "saidh.jimenez@clivi.com.mx",
-      "name": "Jesus Saidh Jimenez Fuentes",
-      "phone": "+525542553723",
-      "company": "Clivi",
-      "customerId": "16CRZZUoQIoEl2Doi",
-      "contactId": "4642651",
-      "sourceBreakdown": [
-        {"field": "email", "value": "saidh.jimenez@clivi.com.mx", "source": "query"},
-        {"field": "name", "value": "Jesus Saidh Jimenez Fuentes", "source": "hubspot"},
-        {"field": "customerId", "value": "16CRZZUoQIoEl2Doi", "source": "chargebee"}
-      ]
-    }
-  }
-}
-```
+### **Chargebee**
+1. Ir a Chargebee Settings → API Keys
+2. Copiar `Site Name` y `Test API Key`
+3. Para producción, usar `Live API Key`
 
-### 🎯 Tipos de Búsqueda Soportados
+### **HubSpot**
+1. Ir a HubSpot Settings → Private Apps
+2. Crear nueva app con permisos de CRM
+3. Copiar el `Access Token` generado
 
-- **📧 Email**: `saidh.jimenez@clivi.com.mx`
-- **📱 Teléfono**: `+525542553723` o `5542553723`
-- **👤 Nombre**: `Jesus Saidh Jimenez` o `Saidh Jimenez`
+### **Firebase/Firestore**
+1. Ir a Firebase Console → Project Settings
+2. Service Accounts → Generate new private key
+3. Descargar archivo JSON y colocarlo en `./firestore/`
 
----
-
-## 🏗️ Arquitectura
-
-### 🔧 Stack Tecnológico
-![mcp arquitectura](https://github.com/user-attachments/assets/94b0c4ea-b3e7-4338-9e8a-b9c4bc9026bb)
-
-```
-
-graph TB
-    A[GraphQL API] --> B[MCP Manager]
-    B --> C[Chargebee API]
-    B --> D[HubSpot API]
-    B --> E[Firebase Admin]
-    B --> F[MCP Connectors]
-    
-    G[Cache Layer] --> A
-    A --> H[User Profile Service]
-    H --> I[Query Detector]
-```
-
-| Capa | Tecnología | Propósito |
-|------|------------|-----------|
-| **API Layer** | Apollo Server 4.0 | GraphQL endpoint público |
-| **Business Logic** | TypeScript Services | Consolidación de datos |
-| **Integration** | APIs Directas + MCPs | Conectores a fuentes externas |
-| **Caching** | Memory Cache | Optimización de performance |
-| **Deployment** | Google Cloud Run | Infraestructura serverless |
-
-### 📊 Fuentes de Datos
-
-| Fuente | Tipo de Datos | API Utilizada | Fallback |
-|--------|---------------|---------------|----------|
-| **Chargebee** | Billing, Suscripciones, Planes | REST API v2 | MCP Connector |
-| **HubSpot** | CRM, Contactos, Deals | REST API v3 | MCP Connector |
-| **Firebase** | Usuarios, Datos Médicos | Admin SDK | MCP Connector |
-
-### 🔄 Flujo de Datos
-
-1. **Query Reception**: GraphQL recibe consulta con email/phone/ID
-2. **Query Detection**: Identifica tipo de consulta (email, teléfono, etc.)
-3. **Parallel Fetching**: Consultas simultáneas a todas las fuentes
-4. **Data Consolidation**: Merge inteligente con priorización por fuente
-5. **Response Building**: Construcción de respuesta con trazabilidad
-6. **Caching**: Almacenamiento en cache para consultas futuras
-
----
-
-## 🚀 Inicio Rápido
-
-### 📦 Instalación
+## 📦 Instalación Local
 
 ```bash
-# Clonar el repositorio
-git clone https://github.com/GibrannClivi/clivi_mcp_orchestrator_v2.1.git
-cd clivi_mcp_orchestrator_v2.1
+# Clonar repositorio
+git clone <tu-repositorio>
+cd mcp_orchestrator_v1
 
 # Instalar dependencias
 npm install
 
-# Configurar variables de entorno
+# Configurar entorno
 cp .env.example .env
-# Editar .env con tus credenciales de API
+# Editar .env con tus credenciales
 
 # Compilar TypeScript
 npm run build
 
-# Ejecutar en modo desarrollo
-npm run dev
+# Ejecutar servidor
+npm start
 ```
 
-### 🔧 Configuración Mínima
+## 🧪 Validación de Configuración
 
 ```bash
-# Variables esenciales en .env
-CHARGEBEE_SITE=tu-sitio
-CHARGEBEE_API_KEY=cb_test_xxxxx
-HUBSPOT_ACCESS_TOKEN=pat-na1-xxxxx
-GOOGLE_CLOUD_PROJECT=tu-proyecto
-PORT=4001
-```
+# Test de conectividad
+npm run test:connections
 
-### 🧪 Primera Consulta
+# Validar configuración
+npm run validate:config
 
-```bash
-# Verificar que el servidor esté funcionando
-curl http://localhost:4001/health
-
-# Consulta de ejemplo
-curl -X POST http://localhost:4001/graphql \
-  -H "Content-Type: application/json" \
-  -d '{
-    "query": "query { getUserProfile(query: \"usuario@ejemplo.com\") { email name company plan subscriptionStatus } }"
-  }'
+# Test con usuario específico
+npm run test:user -- test@upgradebalance.com
 ```
 
 ---
 
-## 📊 API GraphQL
+# 🧪 Testing y Validación
 
-### 🔍 Query Principal
-
-```graphql
-query GetUserProfile($query: String!) {
-  getUserProfile(query: $query) {
-    # 👤 Información Básica (HubSpot + Chargebee)
-    name
-    firstName
-    lastName
-    email
-    phone
-    company
-    jobTitle
-    
-    # 💳 Datos de Facturación (Chargebee)
-    subscriptionStatus
-    plan                    # Nombre legible del plan
-    nextBillingAmount      # Cantidad en centavos
-    nextBillingDate        # ISO 8601 string
-    billingCycle          # "month", "year", etc.
-    customerId
-    subscriptionId
-    
-    # 📈 Datos CRM (HubSpot)
-    contactId
-    lastActivity
-    dealStage
-    leadScore
-    lastTicket {
-      ticketId
-      subject
-      status
-      priority
-      createdAt
-      assignedTo
-    }
-    
-    # 🏥 Datos Médicos (Firebase)
-    userId
-    planStatus
-    medicalPlan
-    medicine
-    medicineCount
-    selfSupplyLogs
-    lastAppointment {
-      appointmentId
-      date
-      type
-      doctor
-      status
-      location
-      notes
-    }
-    nextAppointment {
-      appointmentId
-      date
-      type
-      doctor
-      status
-      location
-      notes
-    }
-    allergies
-    emergencyContact {
-      name
-      phone
-      relationship
-    }
-    
-    # 🔍 Trazabilidad y Metadatos
-    sourceBreakdown {
-      field
-      value
-      source    # "chargebee", "hubspot", "firebase", "query"
-    }
-    suggestions
-  }
-}
-```
-
-### 📋 Queries del Sistema
-
-```graphql
-# Estado de salud del sistema
-query GetSystemHealth {
-  health
-}
-
-# Información detallada de conectores MCP
-query GetMCPSystemInfo {
-  getMCPSystemInfo {
-    health
-    documentation
-    timestamp
-  }
-}
-```
-
-### 📝 Tipos de Consulta Soportados
-
-| Tipo | Formato | Ejemplo |
-|------|---------|---------|
-| **Email** | email@domain.com | `usuario@clivi.com.mx` |
-| **Teléfono** | +[código][número] | `+525551234567` |
-| **ID Cliente** | String alfanumérico | `16CRZZUoQIoEl2Doi` |
-
-### 📊 Estructura de Respuesta
-
-```typescript
-interface UserProfile {
-  // Campos básicos siempre presentes
-  email?: string;
-  name?: string;
-  
-  // Campos opcionales según disponibilidad de datos
-  subscriptionStatus?: string;
-  plan?: string;
-  nextBillingAmount?: number;
-  
-  // Trazabilidad obligatoria
-  sourceBreakdown: FieldSource[];
-  suggestions: string[];
-}
-
-interface FieldSource {
-  field: string;     // Nombre del campo
-  value: string;     // Valor del campo
-  source: string;    // Fuente: "chargebee" | "hubspot" | "firebase" | "query"
-}
-```
-
----
-
-## 🔧 Configuración
-
-### 🌍 Variables de Entorno
-
-#### 📋 Variables Requeridas
+## ✅ Tests Automatizados
 
 ```bash
-# Chargebee Configuration
-CHARGEBEE_SITE=tu-sitio-chargebee
-CHARGEBEE_API_KEY=cb_test_xxxxxxxxxxxxx
-
-# HubSpot Configuration  
-HUBSPOT_ACCESS_TOKEN=pat-na1-xxxxxxxxxxxxx
-
-# Firebase Configuration
-GOOGLE_CLOUD_PROJECT=tu-proyecto-firebase
-GOOGLE_APPLICATION_CREDENTIALS=./firestore/credenciales.json
-
-# Server Configuration
-PORT=4001
-NODE_ENV=production
-```
-
-#### ⚙️ Variables Opcionales
-
-```bash
-# Cache Configuration
-CACHE_TTL=3600                    # TTL en segundos
-CACHE_MAX_SIZE=1000               # Máximo número de entradas
-
-# Logging
-LOG_LEVEL=info                    # debug, info, warn, error
-LOG_FORMAT=json                   # json, text
-
-# MCP Configuration
-MCP_ENABLED=true                  # Habilitar conectores MCP
-MCP_TIMEOUT=30000                 # Timeout en ms para MCP calls
-```
-
-### 🔑 Credenciales de APIs
-
-#### Chargebee
-1. Ir a Chargebee Admin Panel → Settings → API Keys
-2. Crear una nueva API key con permisos de lectura
-3. Copiar el site name y API key
-
-#### HubSpot
-1. Ir a HubSpot → Settings → Integrations → Private Apps
-2. Crear una nueva Private App
-3. Asignar scopes: `crm.objects.contacts.read`, `crm.objects.deals.read`
-4. Copiar el Access Token
-
-#### Firebase
-1. Ir a Firebase Console → Project Settings → Service Accounts
-2. Generar nueva private key
-3. Descargar el archivo JSON de credenciales
-4. Colocar en `./firestore/credenciales.json`
-
-### 📁 Estructura de Archivos de Configuración
-
-```
-project/
-├── .env                          # Variables de entorno
-├── .env.example                  # Template de variables
-├── firestore/
-│   └── credenciales.json         # Service Account Firebase
-├── src/
-│   └── config/
-│       └── index.ts              # Configuración centralizada
-└── package.json
-```
-
----
-
-## 🧪 Testing
-
-### 🔬 Ejecutar Tests
-
-```bash
-# Tests unitarios
+# Ejecutar todos los tests
 npm test
 
-# Tests de integración
-npm run test:integration
+# Tests específicos
+npm run test:unit          # Tests unitarios
+npm run test:integration   # Tests de integración
+npm run test:graphql      # Tests de GraphQL
 
-# Tests con coverage
+# Coverage
 npm run test:coverage
-
-# Tests en modo watch
-npm run test:watch
 ```
 
-### 📊 Scripts de Validación
+## 🔍 Validación Manual
 
+### **Test de Usuario Específico**
 ```bash
-# Validación completa del sistema
-./validate_mcp_manager.sh
-
-# Test de APIs directas
-./test_quick_validation.sh
-
-# Test de escenarios extendidos
-./test_extended_scenarios.sh
-
-# Test de mejoras implementadas
-./test_improvements_v2.sh
+# Script de validación personalizada
+node scripts/validate_user.js test@upgradebalance.com
 ```
 
-### 🧪 Test Cases Principales
+### **Test de Conectividad**
+```bash
+# Verificar todas las integraciones
+node scripts/test_connections.js
+```
 
-#### Unit Tests
-- ✅ Query detection (email, phone, ID)
-- ✅ Data consolidation logic
-- ✅ Cache management
-- ✅ Error handling
+### **Debug de Datos**
+```bash
+# Debug detallado de una consulta
+DEBUG=mcp:* npm start
+```
 
-#### Integration Tests
-- ✅ Chargebee API integration
-- ✅ HubSpot API integration
-- ✅ Firebase Admin SDK integration
-- ✅ GraphQL endpoint functionality
+## 📊 Métricas de Calidad
 
-#### End-to-End Tests
-- ✅ Complete user profile retrieval
-- ✅ Multi-source data consolidation
-- ✅ Performance benchmarks
-- ✅ Error scenarios
-
-### 📈 Métricas de Testing
-
-| Métrica | Valor Objetivo | Estado Actual |
-|---------|----------------|---------------|
-| **Code Coverage** | > 80% | ✅ 85% |
-| **Test Cases** | > 50 | ✅ 67 tests |
-| **API Response Time** | < 2s | ✅ ~1.5s avg |
-| **Success Rate** | > 95% | ✅ 98.5% |
+- **Cobertura de Tests**: >85%
+- **Tiempo de Respuesta**: <3 segundos
+- **Exactitud de Datos**: 100% (sin contaminación)
+- **Disponibilidad**: >99.9%
 
 ---
 
-## 🌐 Despliegue
+# 🌐 Despliegue
 
-### ☁️ Google Cloud Run
+## 🚀 Google Cloud Run
 
-#### 🚀 Despliegue Automático
-
+### **Despliegue Automático**
 ```bash
-# Configurar proyecto
-gcloud config set project TU-PROYECTO-ID
-
-# Ejecutar script de despliegue
-chmod +x deploy.sh
-./deploy.sh
+# Script de despliegue completo
+./deploy-cloudrun.sh
 ```
 
-#### 🔧 Despliegue Manual
-
+### **Despliegue Manual**
 ```bash
-# Build de la imagen Docker
-docker build -t gcr.io/TU-PROYECTO/mcp-orchestrator .
+# Build de imagen Docker
+docker build -t gcr.io/tu-proyecto/mcp-orchestrator .
 
-# Push al registry
-docker push gcr.io/TU-PROYECTO/mcp-orchestrator
+# Push a Container Registry
+docker push gcr.io/tu-proyecto/mcp-orchestrator
 
 # Deploy a Cloud Run
 gcloud run deploy mcp-orchestrator \
-  --image gcr.io/TU-PROYECTO/mcp-orchestrator \
+  --image gcr.io/tu-proyecto/mcp-orchestrator \
   --platform managed \
   --region us-central1 \
   --allow-unauthenticated \
-  --set-env-vars="NODE_ENV=production"
+  --port 4000 \
+  --memory 1Gi \
+  --cpu 1
 ```
 
-### 🐳 Docker Configuration
+### **Configuración de Cloud Run**
+- **CPU**: 1 vCPU
+- **Memoria**: 1 GB
+- **Concurrencia**: 100 requests
+- **Timeout**: 300 segundos
+- **Puerto**: 4000
 
-```dockerfile
-# Dockerfile optimizado para producción
-FROM node:18-alpine
-
-WORKDIR /app
-
-# Instalar dependencias
-COPY package*.json ./
-RUN npm ci --only=production
-
-# Copiar código compilado
-COPY dist/ ./dist/
-COPY firestore/ ./firestore/
-
-# Configuración de runtime
-ENV NODE_ENV=production
-ENV PORT=8080
-
-EXPOSE 8080
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:8080/health || exit 1
-
-# Ejecutar aplicación
-CMD ["node", "dist/server.js"]
-```
-
-### 🔧 Configuración de Cloud Run
-
-```yaml
-# cloud-run.yaml
-apiVersion: serving.knative.dev/v1
-kind: Service
-metadata:
-  name: mcp-orchestrator
-spec:
-  template:
-    metadata:
-      annotations:
-        autoscaling.knative.dev/maxScale: "10"
-        autoscaling.knative.dev/minScale: "1"
-        run.googleapis.com/memory: "1Gi"
-        run.googleapis.com/cpu: "1000m"
-    spec:
-      containers:
-      - image: gcr.io/PROJECT-ID/mcp-orchestrator
-        ports:
-        - containerPort: 8080
-        env:
-        - name: NODE_ENV
-          value: "production"
-        resources:
-          limits:
-            memory: "1Gi"
-            cpu: "1000m"
-```
-
----
-
-## 📈 Monitoreo
-
-### 📊 Métricas Clave
-
-| Métrica | Descripción | Umbral |
-|---------|-------------|--------|
-| **Response Time** | Tiempo promedio de respuesta | < 2s |
-| **Error Rate** | Porcentaje de requests fallidos | < 5% |
-| **Cache Hit Rate** | Eficiencia del cache | > 80% |
-| **API Availability** | Disponibilidad de APIs externas | > 99% |
-
-### 🔍 Health Checks
+## 🔧 Variables de Entorno en Cloud Run
 
 ```bash
-# Health check básico
-curl https://tu-servicio.run.app/health
-
-# Estado detallado del sistema
-curl -X POST https://tu-servicio.run.app/graphql \
-  -d '{"query": "query { getMCPSystemInfo { health documentation timestamp } }"}'
+# Configurar secrets
+gcloud run services update mcp-orchestrator \
+  --set-env-vars="ENV=production" \
+  --set-secrets="CHARGEBEE_API_KEY=chargebee-key:latest" \
+  --set-secrets="HUBSPOT_ACCESS_TOKEN=hubspot-token:latest"
 ```
 
-### 📊 Logging Estructurado
+## 📡 Health Checks
 
-```json
+```bash
+# Endpoint de salud
+GET /health
+
+# Respuesta esperada
 {
-  "timestamp": "2025-07-02T08:30:00.000Z",
-  "level": "INFO",
-  "message": "Profile request processed",
-  "queryType": "email",
-  "responseTime": 1450,
-  "cacheHit": false,
-  "sourcesUsed": ["chargebee", "hubspot"],
-  "traceId": "abc123def456"
+  "status": "healthy",
+  "timestamp": "2025-07-03T00:00:00.000Z",
+  "uptime": 12345,
+  "connections": {
+    "chargebee": "connected",
+    "hubspot": "connected", 
+    "firestore": "connected"
+  }
 }
 ```
 
-### 🚨 Alertas Configuradas
+---
 
-- **High Error Rate**: > 5% en 5 minutos
-- **Slow Response Time**: > 3s promedio en 5 minutos
-- **API Failures**: Falla en APIs externas
-- **Memory Usage**: > 80% uso de memoria
-- **Cache Issues**: Cache hit rate < 50%
+# 📈 Casos de Uso
+
+## 🏥 **Sistema de Salud Digital**
+
+### **Vista 360° del Paciente**
+```graphql
+query PacienteCompleto($email: String!) {
+  getUserProfile(query: $email, queryType: "email") {
+    # Información personal
+    name
+    email
+    phone
+    
+    # Datos de suscripción/plan
+    plan
+    subscriptionStatus
+    
+    # Historial médico completo
+    healthSummary
+    treatments
+    allergies
+    medicineCount
+    
+    # Trazabilidad de datos
+    sourceBreakdown {
+      field
+      source
+    }
+  }
+}
+```
+
+### **Uso en Aplicación Médica**
+- **Consultas Médicas**: Acceso inmediato al historial completo
+- **Facturación**: Estado de suscripción y pagos en tiempo real
+- **Seguimiento**: Monitoreo de tratamientos y medicamentos
+
+## 💼 **Sistema CRM Empresarial**
+
+### **Perfil Unificado de Cliente**
+```graphql
+query ClienteEmpresarial($email: String!) {
+  getUserProfile(query: $email, queryType: "email") {
+    # Datos de contacto
+    name
+    email
+    phone
+    
+    # Estado comercial
+    plan
+    subscriptionStatus
+    customerId
+    
+    # Información de facturación
+    subscriptionId
+    
+    # Fuentes de información
+    sourceBreakdown {
+      field
+      value
+      source
+    }
+  }
+}
+```
+
+### **Uso en Ventas y Soporte**
+- **Equipos de Ventas**: Estado de cuenta y oportunidades
+- **Soporte al Cliente**: Historial completo e información técnica
+- **Facturación**: Estados de pago y suscripciones
+
+## 🔗 **Integración con Terceros**
+
+### **API para Sistemas Externos**
+```javascript
+// Integración con sistema externo
+const fetchUserData = async (email) => {
+  const response = await fetch('https://tu-mcp-endpoint/graphql', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      query: `
+        query { 
+          getUserProfile(query: "${email}", queryType: "email") { 
+            userId customerId email name plan healthSummary 
+          } 
+        }`
+    })
+  });
+  return response.json();
+};
+```
+
+### **Webhooks y Notificaciones**
+- **Actualizaciones en Tiempo Real**: Notificación de cambios en cualquier plataforma
+- **Sincronización**: Mantener sistemas externos actualizados
+- **Auditoría**: Trazabilidad completa de cambios
 
 ---
 
-## 🤝 Contribución
+# 🤝 Contribución
 
-### 📝 Guidelines de Desarrollo
+## 📋 Guía de Contribución
 
 1. **Fork** del repositorio
-2. **Crear feature branch**: `git checkout -b feature/nueva-funcionalidad`
-3. **Escribir tests** para nueva funcionalidad
-4. **Commit changes**: `git commit -am 'feat: añadir nueva funcionalidad'`
-5. **Push branch**: `git push origin feature/nueva-funcionalidad`
-6. **Crear Pull Request** con descripción detallada
+2. **Crear branch** para tu feature: `git checkout -b feature/nueva-funcionalidad`
+3. **Commit** de cambios: `git commit -m 'Agrega nueva funcionalidad'`
+4. **Push** al branch: `git push origin feature/nueva-funcionalidad`
+5. **Crear Pull Request**
 
-### 🔍 Checklist de PR
+## 🧪 Standards de Desarrollo
 
-- [ ] Tests escritos y pasando
-- [ ] Documentación actualizada
-- [ ] Código siguiendo estándares ESLint
-- [ ] Variables de entorno documentadas
-- [ ] Performance impact evaluado
-- [ ] Breaking changes documentados
+### **Código**
+- TypeScript estricto
+- ESLint + Prettier
+- Tests unitarios obligatorios
+- Documentación inline
 
-### 📋 Convenciones de Código
-
-```typescript
-// Naming conventions
-const apiClient = new ChargebeeAPIClient();  // camelCase
-interface UserProfile {                     // PascalCase
-  firstName?: string;                        // Optional con ?
-}
-
-// Error handling
-try {
-  const data = await apiCall();
-  console.log('✅ Success:', data);
-} catch (error) {
-  console.error('❌ Error:', error);
-  throw new Error(`API call failed: ${error.message}`);
-}
-
-// Logging conventions
-console.log('🔍 Debug info');     // Debug
-console.log('✅ Success');         // Success  
-console.log('⚠️ Warning');         // Warning
-console.error('❌ Error');         // Error
+### **Commits**
+```bash
+# Formato de commits
+feat: nueva funcionalidad de usuario
+fix: corrección de bug en búsqueda
+docs: actualización de README
+test: agregar tests para mcpManager
 ```
 
-### 🐛 Reportar Issues
+### **Testing**
+- Cobertura mínima: 85%
+- Tests de integración para nuevas funcionalidades
+- Validación con datos reales
 
-Usar GitHub Issues con el siguiente template:
+## 🔧 Desarrollo Local
 
-```markdown
-## 🐛 Bug Report
+```bash
+# Modo desarrollo con hot reload
+npm run dev
 
-### Descripción
-[Descripción clara del problema]
+# Linting
+npm run lint
+npm run lint:fix
 
-### Pasos para Reproducir
-1. [Primer paso]
-2. [Segundo paso]
-3. [Resultado inesperado]
+# Type checking
+npm run type-check
 
-### Comportamiento Esperado
-[Lo que debería suceder]
-
-### Entorno
-- **Version**: v2.1.0
-- **Node.js**: v18.x
-- **Environment**: production/development
-- **Browser**: Chrome/Firefox/Safari
-
-### Logs
-```
-[Incluir logs relevantes]
-```
-
-### Screenshots
-[Si aplica, añadir screenshots]
+# Build para producción
+npm run build
 ```
 
 ---
 
-## 📄 Licencia
+# 📚 Documentación Adicional
 
-**Clivi MCP Orchestrator v2.1** - Software propietario de Clivi
+## 🔗 Enlaces Útiles
 
-Copyright © 2025 Clivi Technologies. Todos los derechos reservados.
-
-Este software es propiedad de Clivi Technologies y está protegido por leyes de derechos de autor. El uso, distribución o modificación no autorizada está estrictamente prohibida.
-
----
+- [Documentación de Chargebee API](https://apidocs.chargebee.com/docs/api)
+- [Documentación de HubSpot API](https://developers.hubspot.com/docs/api/overview)
+- [Firebase Admin SDK](https://firebase.google.com/docs/admin/setup)
+- [GraphQL Specification](https://graphql.org/learn/)
 
 ## 📞 Soporte
 
-- **Issue Tracker**: [GitHub Issues](https://github.com/GibrannClivi/clivi_mcp_orchestrator_v2.1/issues)
- 
-**🏷️ Versión: v2.1.0**  
+- **Email**: soporte@clivi.com.mx
+- **Documentación**: [Confluence/Wiki interno]
+- **Issues**: [GitHub Issues](https://github.com/tu-org/mcp-orchestrator/issues)
 
+## 📄 Licencia
+
+Este proyecto está bajo la Licencia MIT - ver el archivo [LICENSE](LICENSE) para detalles.
+
+---
+
+**🎯 MCP Orchestrator v1** - Sistema de consolidación de perfiles de usuario con búsqueda estricta y mapeo completo de datos anidados.
+
+*Desarrollado por el equipo de Clivi - Transformando la salud digital* 🏥✨

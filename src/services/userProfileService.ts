@@ -330,9 +330,53 @@ export class UserProfileService {
         sourceBreakdown.push({ field: 'treatments', value: `${firebaseUser.treatments.length} treatments`, source: 'firebase' });
       }
       
+      // Enhanced healthSummary mapping with detailed nested structure
       if (firebaseUser.healthSummary) {
-        profile.healthSummary = firebaseUser.healthSummary;
-        sourceBreakdown.push({ field: 'healthSummary', value: 'Health summary available', source: 'firebase' });
+        const healthSummary = firebaseUser.healthSummary;
+        
+        // Map the nested structure properly
+        const mappedHealthSummary: any = {
+          ...healthSummary
+        };
+        
+        // Extract specific nested fields for better visibility
+        let summaryDescription = 'Health summary available';
+        const summaryParts: string[] = [];
+        
+        if (healthSummary.currentWeight) {
+          summaryParts.push(`Weight: ${healthSummary.currentWeight}`);
+        }
+        
+        if (healthSummary.height) {
+          summaryParts.push(`Height: ${healthSummary.height}`);
+        }
+        
+        if (healthSummary.bloodPressure) {
+          summaryParts.push('Blood pressure recorded');
+        }
+        
+        if (healthSummary.medications && Array.isArray(healthSummary.medications)) {
+          summaryParts.push(`${healthSummary.medications.length} medications`);
+        }
+        
+        if (healthSummary.allergies && Array.isArray(healthSummary.allergies)) {
+          summaryParts.push(`${healthSummary.allergies.length} allergies`);
+        }
+        
+        if (healthSummary.conditions && Array.isArray(healthSummary.conditions)) {
+          summaryParts.push(`${healthSummary.conditions.length} conditions`);
+        }
+        
+        if (healthSummary.vitalSigns) {
+          summaryParts.push('Vital signs available');
+        }
+        
+        if (summaryParts.length > 0) {
+          summaryDescription = summaryParts.join(', ');
+        }
+        
+        profile.healthSummary = mappedHealthSummary;
+        sourceBreakdown.push({ field: 'healthSummary', value: summaryDescription, source: 'firebase' });
       }
     }
 
@@ -359,7 +403,8 @@ export class UserProfileService {
     // Map of known plan IDs to readable names
     const planNameMap: { [key: string]: string } = {
       'clivi-zero-ozempic-1mg-MXN-Monthly': 'Plan Zero + Ozempic 1mg Mensual',
-      'zero-pro-wegovy-050-MXN-Monthly': 'Zero Pro + Wegovy 0.5mg Mensual',
+      'clivi-zero-ozempic-1mg-MXN-Every-6-months': 'Plan Zero + Ozempic 1mg Semestral',
+      'zero-pro-wegovy-050-MXN-Monthly': 'Plan Zero + Wegovy 0.50MG MXN Monthly',
       'clivi-zero-pro-b2c-MXN-Monthly': 'Clivi Zero Pro B2C Mensual',
       'clivi-zero-pro-b2c-MXN-Yearly': 'Clivi Zero Pro B2C Anual'
     };

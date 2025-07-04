@@ -39,12 +39,12 @@ COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
 # Switch to non-root user  
 USER nodejs
 
-# Expose port (Cloud Run uses PORT env var)
-EXPOSE 8080
+# Expose port (Cloud Run uses PORT env var, default to 4001)
+EXPOSE 4001
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:8080/graphql?query={health}', (res) => process.exit(res.statusCode === 200 ? 0 : 1))"
+  CMD node -e "require('http').get('http://localhost:' + (process.env.PORT || 4001) + '/graphql?query={health}', (res) => process.exit(res.statusCode === 200 ? 0 : 1))"
 
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["dumb-init", "--"]
