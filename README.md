@@ -188,6 +188,9 @@ query PerfilComercial($email: String!) {
     │ • Facturación   │ │ • Oportunidades │ │ • Medicamentos  │
     └─────────────────┘ └─────────────────┘ └─────────────────┘
 ```
+### Arquitectura detallada
+![mcp arquitectura](https://github.com/user-attachments/assets/7610c93c-440d-425d-a8d6-9639e529e8ec)
+
 
 ### 🔄 **Flujo de Datos Detallado**
 
@@ -261,7 +264,7 @@ query PerfilComercial($email: String!) {
 ### 🌐 **Endpoint de Producción**
 
 ```
-POST https://mcp-orchestrator-v1-[PROJECT-ID].us-central1.run.app/graphql
+POST  https://mcp-orchestrator-v1-456314813706.us-central1.run.app
 Content-Type: application/json
 ```
 
@@ -972,6 +975,8 @@ npm run validate:firestore-structure
 
 ### 🚀 **Google Cloud Run (Recomendado)**
 
+
+
 El MCP Orchestrator está optimizado para Cloud Run con configuración automática:
 
 #### **Despliegue con Un Comando**
@@ -1229,7 +1234,7 @@ query ConsultaMedica($email: String!) {
 }
 ```
 
-**Resultado**: El médico obtiene una vista 360° del paciente en **menos de 3 segundos**, con información actualizada de todas las fuentes.
+**Resultado**: una vista 360° del paciente en **menos de 3 segundos**, con información actualizada de todas las fuentes. por ahora es un prototipo con una lista curada de campos de datos, pueden agregarse mas desde el codigo
 
 ---
 
