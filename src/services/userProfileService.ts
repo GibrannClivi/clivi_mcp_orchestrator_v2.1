@@ -95,6 +95,15 @@ export class UserProfileService {
       dealStage: undefined,
       leadScore: undefined,
       lastTicket: undefined,
+      // Medical Info from HubSpot (Fundamentales)
+      planIncludedPackage: undefined,
+      planName: undefined,
+      pxInformation: undefined,
+      specialistsAssigned: undefined,
+      supplies: undefined,
+      lastPrescription: undefined,
+      zero: undefined,
+      // Medical Info (Firebase)
       userId: undefined,
       emailAdress: undefined,
       planStatus: undefined,
@@ -173,6 +182,84 @@ export class UserProfileService {
         if (props.jobtitle) {
           profile.jobTitle = props.jobtitle;
           sourceBreakdown.push({ field: 'jobTitle', value: props.jobtitle, source: 'hubspot' });
+        }
+
+        // Campos médicos fundamentales de HubSpot
+        if (props.treatment) {
+          if (!profile.treatments) profile.treatments = [];
+          profile.treatments.push(props.treatment);
+          sourceBreakdown.push({ field: 'treatment', value: props.treatment, source: 'hubspot' });
+        }
+
+        if (props.medical_treatment) {
+          if (!profile.treatments) profile.treatments = [];
+          profile.treatments.push(props.medical_treatment);
+          sourceBreakdown.push({ field: 'medical_treatment', value: props.medical_treatment, source: 'hubspot' });
+        }
+
+        if (props.plan_included_package) {
+          profile.planIncludedPackage = props.plan_included_package;
+          sourceBreakdown.push({ field: 'planIncludedPackage', value: props.plan_included_package, source: 'hubspot' });
+        }
+
+        if (props.plan_name) {
+          profile.planName = props.plan_name;
+          sourceBreakdown.push({ field: 'planName', value: props.plan_name, source: 'hubspot' });
+        }
+
+        if (props.package_plan && !profile.planIncludedPackage) {
+          profile.planIncludedPackage = props.package_plan;
+          sourceBreakdown.push({ field: 'planIncludedPackage', value: props.package_plan, source: 'hubspot' });
+        }
+
+        if (props.subscription_plan && !profile.planIncludedPackage && !profile.medicalPlan) {
+          profile.medicalPlan = props.subscription_plan;
+          sourceBreakdown.push({ field: 'medicalPlan', value: props.subscription_plan, source: 'hubspot' });
+        }
+
+        if (props.px_information) {
+          profile.pxInformation = props.px_information;
+          sourceBreakdown.push({ field: 'pxInformation', value: props.px_information, source: 'hubspot' });
+        }
+
+        if (props.patient_info && !profile.pxInformation) {
+          profile.pxInformation = props.patient_info;
+          sourceBreakdown.push({ field: 'pxInformation', value: props.patient_info, source: 'hubspot' });
+        }
+
+        if (props.specialists_assigned) {
+          profile.specialistsAssigned = props.specialists_assigned;
+          sourceBreakdown.push({ field: 'specialistsAssigned', value: props.specialists_assigned, source: 'hubspot' });
+        }
+
+        if (props.assigned_specialists && !profile.specialistsAssigned) {
+          profile.specialistsAssigned = props.assigned_specialists;
+          sourceBreakdown.push({ field: 'specialistsAssigned', value: props.assigned_specialists, source: 'hubspot' });
+        }
+
+        if (props.supplies) {
+          profile.supplies = props.supplies;
+          sourceBreakdown.push({ field: 'supplies', value: props.supplies, source: 'hubspot' });
+        }
+
+        if (props.medical_supplies && !profile.supplies) {
+          profile.supplies = props.medical_supplies;
+          sourceBreakdown.push({ field: 'supplies', value: props.medical_supplies, source: 'hubspot' });
+        }
+
+        if (props.last_prescription) {
+          profile.lastPrescription = props.last_prescription;
+          sourceBreakdown.push({ field: 'lastPrescription', value: props.last_prescription, source: 'hubspot' });
+        }
+
+        if (props.prescription_info && !profile.lastPrescription) {
+          profile.lastPrescription = props.prescription_info;
+          sourceBreakdown.push({ field: 'lastPrescription', value: props.prescription_info, source: 'hubspot' });
+        }
+
+        if (props.zero) {
+          profile.zero = props.zero;
+          sourceBreakdown.push({ field: 'zero', value: props.zero, source: 'hubspot' });
         }
       }
     }

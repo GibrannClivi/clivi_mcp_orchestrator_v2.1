@@ -381,6 +381,15 @@ type UserProfile {
   plan: String           # Nombre legible del plan
   subscriptionStatus: String  # active, paused, cancelled, etc.
   
+  # 🏥 Datos médicos (HubSpot)
+  planName: String           # Nombre del plan médico de HubSpot
+  planIncludedPackage: String # Paquete incluido en el plan
+  pxInformation: String      # Información del paciente
+  specialistsAssigned: String # Especialistas asignados
+  supplies: String           # Suministros médicos
+  lastPrescription: String   # Última prescripción
+  zero: String              # Campo especial Zero
+  
   # 🏥 Datos médicos (Firestore)
   planStatus: String     # Estado del plan médico
   medicalPlan: String    # Plan médico específico
@@ -971,9 +980,203 @@ npm run validate:firestore-structure
 
 ---
 
+## 📝 Scripts Fundamentales del Repositorio
+
+### 🔧 **Scripts de Desarrollo y Testing**
+
+| Script | Descripción | Uso |
+|--------|-------------|-----|
+| `test_graphql_endpoint.js` | Prueba completa del endpoint GraphQL en producción | `node test_graphql_endpoint.js` |
+| `validate_all_integrations.js` | Valida todas las integraciones (Chargebee, HubSpot, Firebase) | `node validate_all_integrations.js` |
+| `debug_chargebee_specific.js` | Debug específico de problemas con Chargebee | `node debug_chargebee_specific.js` |
+| `debug_firebase_direct.js` | Prueba directa de conexión con Firebase | `node debug_firebase_direct.js` |
+| `debug_hubspot_exact.js` | Debug detallado de consultas HubSpot | `node debug_hubspot_exact.js` |
+| `test_firebase_connection.js` | Valida conectividad con Firestore | `node test_firebase_connection.js` |
+
+### 🚀 **Scripts de Despliegue**
+
+| Script | Descripción | Uso |
+|--------|-------------|-----|
+| `deploy.sh` | Script principal de build y deploy completo | `./deploy.sh` |
+| `deploy-cloudrun.sh` | Deploy específico para Cloud Run | `./deploy-cloudrun.sh` |
+| `quick_deploy.sh` | Deploy rápido para desarrollo | `./quick_deploy.sh` |
+
+### 🛠️ **Scripts de Utilidades**
+
+| Script | Descripción | Uso |
+|--------|-------------|-----|
+| `build_with_patch.js` | Build con parches de compatibilidad | `node build_with_patch.js` |
+| `fix_firebase_admin.js` | Corrige problemas comunes de Firebase Admin | `node fix_firebase_admin.js` |
+| `check_firestore_users.ts` | Lista usuarios en Firestore para debug | `npx ts-node check_firestore_users.ts` |
+
+---
+
+## 🧩 Guía para Añadir Nuevos Campos de Datos
+
+### 📊 **Añadir Campo desde Chargebee**
+
+#### 1. **Actualizar el Tipo GraphQL**
+```typescript
+// src/graphql/types/index.ts
+export const typeDefs = `
+  type UserProfile {
+    # ...existing fields...
+    nuevoCargoChargebee: String  # ← Añadir aquí
+    sourceBreakdown: [SourceBreakdown]
+  }
+`;
+```
+
+#### 2. **Actualizar el MCP Manager**
+```typescript
+// src/mcp/mcpManager.ts
+async getChargebeeData(query: string): Promise<any> {
+  // ...existing code...
+  
+  if (customer) {
+    return {
+      // ...existing fields...
+      nuevoCargoChargebee: customer.billing_address?.state || null,  // ← Añadir mapping
+    };
+  }
+}
+```
+
+#### 3. **Actualizar el Service**
+```typescript
+// src/services/userProfileService.ts
+async getUserProfile(query: string): Promise<UserProfile> {
+  // ...existing code...
+  
+  return {
+    // ...existing fields...
+    nuevoCargoChargebee: chargebeeData?.nuevoCargoChargebee || null,
+    sourceBreakdown: [
+      // ...existing breakdown...
+      ...(chargebeeData?.nuevoCargoChargebee ? [{
+        field: 'nuevoCargoChargebee',
+        value: chargebeeData.nuevoCargoChargebee,
+        source: 'chargebee'
+      }] : [])
+    ]
+  };
+}
+```
+
+### 📞 **Añadir Campo desde HubSpot**
+
+#### 1. **Actualizar el Tipo GraphQL**
+```typescript
+// src/graphql/types/index.ts
+export const typeDefs = `
+  type UserProfile {
+    # ...existing fields...
+    nuevoCampoHubspot: String  # ← Añadir aquí
+  }
+`;
+```
+
+#### 2. **Actualizar el MCP Manager**
+```typescript
+// src/mcp/mcpManager.ts
+async getHubSpotData(query: string): Promise<any> {
+  // ...existing code...
+  
+  const properties = [
+    'firstname', 'lastname', 'email', 'phone',
+    'nuevo_campo_hubspot'  // ← Añadir propiedad de HubSpot
+  ];
+  
+  // En el mapping de respuesta:
+  return {
+    // ...existing fields...
+    nuevoCampoHubspot: contact.properties.nuevo_campo_hubspot || null,
+  };
+}
+```
+
+#### 3. **Actualizar el Service**
+```typescript
+// src/services/userProfileService.ts
+// Similar al paso 3 de Chargebee, pero con 'hubspot' como source
+```
+
+### 🔥 **Añadir Campo desde Firebase**
+
+#### 1. **Actualizar el Tipo GraphQL**
+```typescript
+// src/graphql/types/index.ts
+export const typeDefs = `
+  type UserProfile {
+    # ...existing fields...
+    nuevoCampoFirebase: String  # ← Añadir aquí
+  }
+`;
+```
+
+#### 2. **Actualizar el MCP Manager**
+```typescript
+// src/mcp/mcpManager.ts
+async getFirebaseData(query: string): Promise<any> {
+  // ...existing code...
+  
+  return {
+    // ...existing fields...
+    nuevoCampoFirebase: userData?.nuevoCampoFirebase || null,
+  };
+}
+```
+
+#### 3. **Actualizar el Service**
+```typescript
+// src/services/userProfileService.ts
+// Similar a los pasos anteriores, pero con 'firebase' como source
+```
+
+### ✅ **Testing del Nuevo Campo**
+
+```javascript
+// En test_graphql_endpoint.js
+const graphqlQuery = {
+  query: `
+    query getUserProfile($query: String!) {
+      getUserProfile(query: $query) {
+        # ...existing fields...
+        nuevoCargoChargebee     # ← Añadir en query de prueba
+        nuevoCampoHubspot       # ← Añadir en query de prueba
+        nuevoCampoFirebase      # ← Añadir en query de prueba
+        sourceBreakdown {
+          field
+          value
+          source
+        }
+      }
+    }
+  `
+};
+```
+
+### 🚀 **Deployment tras Añadir Campos**
+
+```bash
+# 1. Test local
+npm run build
+npm run dev
+
+# 2. Test del endpoint
+node test_graphql_endpoint.js
+
+# 3. Deploy a producción
+./deploy.sh
+```
+
+---
+
 ## 🌐 Despliegue
 
 ### 🚀 **Google Cloud Run (Recomendado)**
+
+**URL de Servicio Actual**: `https://mcp-orchestrator-v1-zpittimqlq-uc.a.run.app`
 
 
 

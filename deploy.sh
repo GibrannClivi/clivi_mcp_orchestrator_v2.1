@@ -9,8 +9,8 @@ echo "🧹 Limpiando versiones previas de Cloud Run y Artifact Registry..."
 PROJECT_ID="dtwo-qa"
 SERVICE_NAME="mcp-orchestrator-v1"
 REGION="us-central1"
-REPOSITORY="mcp-repo"
-IMAGE_NAME="mcp-orchestrator"
+REPOSITORY="mcp-orchestrator"
+IMAGE_NAME="$REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$SERVICE_NAME"
 
 # Configurar proyecto
 gcloud config set project $PROJECT_ID
@@ -23,16 +23,16 @@ echo "🗑️  Limpiando imágenes del Artifact Registry..."
 gcloud artifacts repositories create $REPOSITORY --repository-format=docker --location=$REGION --quiet || echo "✅ Repositorio ya existe"
 
 # Listar y eliminar imágenes existentes
-gcloud artifacts docker images list $REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE_NAME --format="value(IMAGE)" | while read image; do
+gcloud artifacts docker images list $REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$SERVICE_NAME --format="value(IMAGE)" | while read image; do
     echo "Eliminando imagen: $image"
     gcloud artifacts docker images delete "$image" --quiet || echo "⚠️  No se pudo eliminar $image"
 done
 
 echo "🔨 Construyendo nueva imagen Docker..."
-docker build -t $REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE_NAME:latest .
+docker build -t $IMAGE_NAME:latest .
 
 echo "📦 Subiendo imagen al Artifact Registry..."
-docker push $REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE_NAME:latest
+docker push $IMAGE_NAME:latest
 
 echo "🚀 Desplegando a Cloud Run con variables de entorno..."
 
@@ -66,7 +66,7 @@ fi
 echo "✅ Variables de entorno verificadas correctamente"
 
 gcloud run deploy $SERVICE_NAME \
-  --image=$REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE_NAME:latest \
+  --image=$IMAGE_NAME:latest \
   --region=$REGION \
   --platform=managed \
   --allow-unauthenticated \

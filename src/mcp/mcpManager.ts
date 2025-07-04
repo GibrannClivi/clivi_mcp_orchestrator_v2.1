@@ -2,10 +2,8 @@
  * CLEAN MCP Manager - Firebase with FIRESTORE ONLY (No Auth needed)
  * Simple integration like Chargebee and HubSpot
  */
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
-import { config } from '../config/index.js';
-import { QueryType } from '../utils/queryDetector.js';
+import { config } from '../config/index';
+import { QueryType } from '../utils/queryDetector';
 
 /**
  * Direct API client for Chargebee - ONLY real data
@@ -152,7 +150,15 @@ class HubSpotAPIClient {
             }],
             properties: [
               'email', 'firstname', 'lastname', 'phone', 'company', 'jobtitle',
-              'hs_lead_status', 'hubspotscore', 'lastmodifieddate', 'createdate'
+              'hs_lead_status', 'hubspotscore', 'lastmodifieddate', 'createdate',
+              // Campos médicos fundamentales
+              'treatment', 'plan_included_package', 'px_information', 
+              'specialists_assigned', 'supplies', 'last_prescription', 'zero',
+              'plan_name',
+              // Campos alternativos comunes en HubSpot
+              'medical_treatment', 'package_plan', 'patient_info',
+              'assigned_specialists', 'medical_supplies', 'prescription_info',
+              'treatment_plan', 'subscription_plan', 'medical_plan'
             ]
           };
           break;
@@ -167,7 +173,15 @@ class HubSpotAPIClient {
             }],
             properties: [
               'email', 'firstname', 'lastname', 'phone', 'company', 'jobtitle',
-              'hs_lead_status', 'hubspotscore', 'lastmodifieddate', 'createdate'
+              'hs_lead_status', 'hubspotscore', 'lastmodifieddate', 'createdate',
+              // Campos médicos fundamentales
+              'treatment', 'plan_included_package', 'px_information', 
+              'specialists_assigned', 'supplies', 'last_prescription', 'zero',
+              'plan_name',
+              // Campos alternativos comunes en HubSpot
+              'medical_treatment', 'package_plan', 'patient_info',
+              'assigned_specialists', 'medical_supplies', 'prescription_info',
+              'treatment_plan', 'subscription_plan', 'medical_plan'
             ]
           };
           break;
@@ -182,7 +196,15 @@ class HubSpotAPIClient {
             }],
             properties: [
               'email', 'firstname', 'lastname', 'phone', 'company', 'jobtitle',
-              'hs_lead_status', 'hubspotscore', 'lastmodifieddate', 'createdate'
+              'hs_lead_status', 'hubspotscore', 'lastmodifieddate', 'createdate',
+              // Campos médicos fundamentales
+              'treatment', 'plan_included_package', 'px_information', 
+              'specialists_assigned', 'supplies', 'last_prescription', 'zero',
+              'plan_name',
+              // Campos alternativos comunes en HubSpot
+              'medical_treatment', 'package_plan', 'patient_info',
+              'assigned_specialists', 'medical_supplies', 'prescription_info',
+              'treatment_plan', 'subscription_plan', 'medical_plan'
             ]
           };
           break;
