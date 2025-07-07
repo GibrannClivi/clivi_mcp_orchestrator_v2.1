@@ -103,6 +103,9 @@ export class UserProfileService {
       supplies: undefined,
       lastPrescription: undefined,
       zero: undefined,
+      // Payment History from HubSpot
+      lastTwoPayments: [],
+      paymentHistory: [],
       // Medical Info (Firebase)
       userId: undefined,
       emailAdress: undefined,
@@ -260,6 +263,27 @@ export class UserProfileService {
         if (props.zero) {
           profile.zero = props.zero;
           sourceBreakdown.push({ field: 'zero', value: props.zero, source: 'hubspot' });
+        }
+      }
+
+      // Fetch payment history if we have a contact ID
+      if (profile.contactId && sources.hubspot?.data?.paymentHistory) {
+        const paymentHistory = sources.hubspot.data.paymentHistory;
+        if (paymentHistory && paymentHistory.length > 0) {
+          profile.paymentHistory = paymentHistory;
+          profile.lastTwoPayments = paymentHistory.slice(0, 2);
+          
+          sourceBreakdown.push({ 
+            field: 'paymentHistory', 
+            value: `${paymentHistory.length} payment records`, 
+            source: 'hubspot' 
+          });
+          
+          sourceBreakdown.push({ 
+            field: 'lastTwoPayments', 
+            value: `Last ${Math.min(2, paymentHistory.length)} payments`, 
+            source: 'hubspot' 
+          });
         }
       }
     }

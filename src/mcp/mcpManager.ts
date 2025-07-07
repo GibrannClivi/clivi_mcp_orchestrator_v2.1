@@ -264,6 +264,68 @@ class HubSpotAPIClient {
       return null;
     }
   }
+
+  async getPaymentHistory(contactId: string): Promise<any[]> {
+    try {
+      console.log(`🔍 HubSpot API: Getting payment history for contact ${contactId}`);
+      
+      // Buscar deals asociados al contacto que representen pagos
+      const response = await fetch(`${this.baseUrl}/crm/v3/objects/deals/search`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          filterGroups: [{
+            filters: [{
+              propertyName: 'associations.contact',
+              operator: 'EQ',
+              value: contactId
+            }]
+          }],
+          properties: [
+            'dealname', 'dealstage', 'amount', 'closedate', 'createdate', 
+            'dealtype', 'pipeline', 'hs_deal_stage_probability', 'description',
+            'payment_status', 'payment_type', 'payment_amount', 'payment_date',
+            'invoice_id', 'transaction_id', 'currency'
+          ],
+          sorts: [{ propertyName: 'createdate', direction: 'DESCENDING' }],
+          limit: 10
+        })
+      });
+
+      if (!response.ok) {
+        console.log(`❌ HubSpot Payment History API: HTTP ${response.status}`);
+        return [];
+      }
+
+      const data = await response.json() as any;
+      
+      if (!data.results || data.results.length === 0) {
+        console.log(`📋 HubSpot Payment History: No payment records found for contact ${contactId}`);
+        return [];
+      }
+
+      // Mapear los deals a formato de historial de pagos
+      const paymentHistory = data.results.map((deal: any) => ({
+        id: deal.id,
+        status: deal.properties.dealstage || deal.properties.payment_status || 'unknown',
+        type: deal.properties.dealtype || deal.properties.payment_type || 'payment',
+        createdAt: deal.properties.createdate || deal.properties.payment_date,
+        total: parseFloat(deal.properties.amount || deal.properties.payment_amount || '0'),
+        amount: parseFloat(deal.properties.amount || deal.properties.payment_amount || '0'),
+        currency: deal.properties.currency || 'MXN',
+        description: deal.properties.dealname || deal.properties.description || 'Payment'
+      }));
+
+      console.log(`✅ HubSpot Payment History: Found ${paymentHistory.length} payment records`);
+      return paymentHistory;
+    } catch (error) {
+      console.error('HubSpot Payment History API error:', error);
+      return [];
+    }
+  }
 }
 
 /**
@@ -513,8 +575,22 @@ export class MCPManager {
         return { error: 'No contact found', source: 'hubspot' };
       }
 
+      // Fetch payment history for the contact
+      let paymentHistory: any[] = [];
+      if (contact.id) {
+        try {
+          paymentHistory = await this.hubspotClient.getPaymentHistory(contact.id);
+        } catch (error) {
+          console.error('Error fetching payment history:', error);
+          // Don't fail the whole request if payment history fails
+        }
+      }
+
       return {
-        data: { contact },
+        data: { 
+          contact,
+          paymentHistory 
+        },
         source: 'hubspot'
       };
     } catch (error: any) {

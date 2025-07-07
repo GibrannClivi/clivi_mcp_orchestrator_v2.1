@@ -28,6 +28,17 @@ export interface EmergencyContact {
   relationship?: string;
 }
 
+export interface PaymentHistory {
+  id?: string;
+  status?: string;
+  type?: string;
+  createdAt?: string;
+  total?: number;
+  amount?: number;
+  currency?: string;
+  description?: string;
+}
+
 export interface FieldSource {
   field: string;
   value?: string;
@@ -68,6 +79,10 @@ export interface UserProfile {
   supplies?: string;
   lastPrescription?: string;
   zero?: string;
+  
+  // Payment History from HubSpot
+  lastTwoPayments?: PaymentHistory[];
+  paymentHistory?: PaymentHistory[];
   
   // Medical Info (Firebase)
   userId?: string;
@@ -267,6 +282,10 @@ export const typeDefs = `#graphql
     lastPrescription: String
     zero: String
     
+    # Payment History from HubSpot
+    lastTwoPayments: [PaymentHistory]
+    paymentHistory: [PaymentHistory]
+    
     # Medical Info (Firebase)
     userId: String
     emailAdress: String
@@ -310,6 +329,17 @@ export const typeDefs = `#graphql
     name: String
     phone: String
     relationship: String
+  }
+
+  type PaymentHistory {
+    id: String
+    status: String
+    type: String
+    createdAt: String
+    total: Float
+    amount: Float
+    currency: String
+    description: String
   }
 
   type FieldSource {

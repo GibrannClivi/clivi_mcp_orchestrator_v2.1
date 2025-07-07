@@ -5,8 +5,8 @@ yarn-debug.log*
 yarn-error.log*
 
 # Production builds
-/dist
-/build
+dist/
+build/
 
 # Environment variables
 .env
@@ -15,24 +15,15 @@ yarn-error.log*
 .env.test.local
 .env.production.local
 
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-*.json
-.json
-# OS
-.DS_Store
-Thumbs.db
-
 # Logs
+logs
 *.log
-logs/
+server.log
+build.log
+deploy.log
 
 # Runtime data
-pids/
+pids
 *.pid
 *.seed
 *.pid.lock
@@ -40,14 +31,76 @@ pids/
 # Coverage directory used by tools like istanbul
 coverage/
 
-# Firebase
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Firebase credentials (keep local only)
 .firebase/
 firebase-debug.log
 .firebaserc
-firestore/dtwo-firebase-adminsdk-*.json
+firestore/*.json
 
-# Docker
-Dockerfile.local
+# Test files (temporary)
+test_*.js
+test_*.ts
+debug_*.js
+debug_*.ts
+validate_*.js
+validate_*.ts
+validate_*.sh
+
+# Temporary files
+add_firebase_*.ts
+add_firebase_*.js
+analyze_*.ts
+check_*.ts
+check_*.js
+fix_*.js
+patch_*.js
+rebuild_*.js
+list_*.js
+diagnostic_*.js
+precise_*.js
+
+# Documentation files (temporary/generated)
+*_REPORT.md
+*_SUCCESS.md
+*_VALIDATION.md
+*_IMPLEMENTATION*.md
+*_REQUIREMENTS.md
+*_COMPLETADA.md
+CAMPOS_DATOS_POR_FUENTE.md
+CLEANUP_REPORT.md
+CROSS_PLATFORM_VALIDATION_REPORT.md
+FINAL_*.md
+MEJORAS_*.md
+PLAN_NAME_*.md
+POSTMAN_*.md
+VALIDACION_*.md
+VALIDATION_*.md
+
+# Build and deploy artifacts
+deploy_commands.txt
+archived_files/
+postman_collection*.json
+cloudrun.env
+
+# Keep only essential files
+!deploy.sh
+!README.md
+!package.json
+!tsconfig.json
+!jest.config.js
+!cloudbuild.yaml
+!cloudrun.yaml
+!Dockerfile
 docker-compose.override.yml
 
 # Archived files
