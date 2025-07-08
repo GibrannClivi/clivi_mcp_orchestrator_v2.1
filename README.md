@@ -1649,10 +1649,8 @@ query NuevaFuncionalidad {
 
 ---
 
-**Desarrollado con ❤️ por el equipo de Clivi Healthcare Technology**
 **Desarrollado con ❤️ por el equipo de Clivi
 
-[Website](https://clivi.com.mx) • [Documentation](https://docs.clivi.com.mx) • [Support](mailto:soporte@clivi.com.mx)
 
 <<<<<<< HEAD
 </div>
