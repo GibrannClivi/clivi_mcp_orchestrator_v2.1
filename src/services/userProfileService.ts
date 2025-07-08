@@ -13,7 +13,7 @@ export class UserProfileService {
     this.cacheManager = new CacheManager();
   }
 
-  async getUserProfile(query: string): Promise<UserProfile> {
+  async getUserProfile(query: string): Promise<UserProfile | null> {
     const startTime = Date.now();
     
     // Detect query type and normalize
@@ -55,7 +55,8 @@ export class UserProfileService {
 
       if (!hasRealData) {
         console.log('❌ No real data found in any MCP source');
-        throw new Error(`No data found for user: ${normalizedQuery}`);
+        console.log('✅ Elegant error handling: Returning null instead of throwing');
+        return null;
       }
       
       // Consolidate data from all sources - ONLY REAL DATA

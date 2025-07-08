@@ -17,8 +17,14 @@ export const resolvers = {
           throw new Error('Query parameter is required and cannot be empty');
         }
 
-        // Get user profile - will throw error if no real data found
-        return await userProfileService.getUserProfile(query);
+        // Get user profile - returns null if no real data found
+        const profile = await userProfileService.getUserProfile(query);
+        
+        if (!profile) {
+          throw new Error(`No data found for user: ${query}`);
+        }
+        
+        return profile;
       } catch (error) {
         console.error('GraphQL getUserProfile error:', error);
         

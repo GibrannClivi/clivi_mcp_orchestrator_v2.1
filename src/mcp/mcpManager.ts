@@ -220,7 +220,12 @@ class HubSpotAPIClient {
       });
 
       if (!response.ok) {
-        console.log(`❌ HubSpot API: HTTP ${response.status} - ${response.statusText}`);
+        if (response.status === 401) {
+          console.log(`❌ HubSpot API: Token expirado o inválido (401). Necesita renovación.`);
+          console.log(`   Instrucciones: https://app.hubspot.com/settings/integrations/api-key`);
+        } else {
+          console.log(`❌ HubSpot API: HTTP ${response.status} - ${response.statusText}`);
+        }
         return null;
       }
 

@@ -364,9 +364,9 @@ type Query {
 
 type UserProfile {
   # 🆔 Identificadores únicos
-  userId: String          # ID en Firestore
-  contactId: String       # ID en HubSpot
-  customerId: String      # ID en Chargebee
+  userId: String          # ID in Firestore
+  contactId: String       # ID in HubSpot
+  customerId: String      # ID in Chargebee
   subscriptionId: String  # ID de suscripción
   
   # 👤 Información personal
@@ -699,670 +699,397 @@ GRAPHQL_PLAYGROUND=true                     # Habilitar GraphQL Playground
    CHARGEBEE_API_KEY=test_cb_xxxxxxxxxxxxxxxxxx
    ```
 
-#### **2. HubSpot (Sistema CRM)**
+#### **2. HubSpot (Sistema CRM) - Configuración de Producción**
 
 ```bash
-# Pasos para obtener token de HubSpot:
+# 🔧 Guía Completa para Configurar HubSpot Private App en Producción
 ```
 
-1. **Crear Private App**
-   - Ir a HubSpot Settings → `Integrations` → `Private Apps`
+### **📋 Paso 1: Crear Private App en HubSpot**
+
+1. **Acceso a HubSpot Admin**
+   ```
+   📍 URL: https://app.hubspot.com/
+   🔐 Acceso: Credenciales de administrador/super admin
+   📂 Ruta: Settings (⚙️) → Integrations → Private Apps
+   ```
+
+2. **Crear Nueva Private App**
    - Click `Create a private app`
+   - **App Info:**
+     - **Name**: `Clivi MCP Orchestrator - Production`
+     - **Description**: `Sistema de orquestación MCP para consolidación de datos de pacientes en producción`
+     - **Logo**: Opcional (subir logo de Clivi)
 
-2. **Configurar Permisos**
-   - **CRM Scopes necesarios:**
-     - `crm.objects.contacts.read`
-     - `crm.objects.contacts.write`
-     - `crm.schemas.contacts.read`
+### **🔐 Paso 2: Configurar Scopes Críticos**
 
-3. **Obtener Token**
-   - Copiar el `Access token` generado
-   - Obtener `Portal ID` desde `Settings` → `Account Setup` → `Account Details`
-
-4. **Configurar en .env**
-   ```bash
-   HUBSPOT_ACCESS_TOKEN=pat-na1-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-   HUBSPOT_PORTAL_ID=tu-portal-id
-   ```
-
-#### **3. Firebase/Firestore (Datos Médicos)**
+**⚠️ IMPORTANTE**: Usar solo los scopes mínimos necesarios para seguridad:
 
 ```bash
-# Pasos para configurar Firebase:
+# 📋 Scopes OBLIGATORIOS (Mínimos):
+✅ crm.objects.contacts.read       # Leer contactos de pacientes
+✅ crm.objects.contacts.write      # Actualizar contactos (opcional)
+✅ crm.objects.deals.read          # Leer deals/oportunidades
+✅ crm.schemas.contacts.read       # Leer propiedades de contactos
+✅ crm.schemas.deals.read          # Leer propiedades de deals
+
+# 📋 Scopes OPCIONALES (Recomendados):
+✅ crm.objects.companies.read      # Leer empresas/organizaciones
+✅ crm.associations.read           # Leer relaciones entre objetos
+✅ crm.lists.read                  # Leer listas de contactos
+✅ crm.objects.notes.read          # Leer notas (historial)
+
+# ❌ Scopes NO REQUERIDOS (Evitar):
+❌ crm.objects.contacts.write      # No modificamos contactos
+❌ crm.objects.deals.write         # No modificamos deals
+❌ crm.objects.companies.write     # No modificamos empresas
+❌ settings.users.read             # No necesitamos usuarios
 ```
 
-1. **Generar Service Account**
-   - Ir a [Firebase Console](https://console.firebase.google.com)
-   - Seleccionar proyecto → `Project Settings` (⚙️)
-   - Tab `Service accounts`
+### **🔑 Paso 3: Generar y Obtener Token**
 
-2. **Crear Credenciales**
-   - Click `Generate new private key`
-   - Descargar archivo JSON
+1. **Generar Token**
+   - Click `Create app`
+   - **⚠️ CRÍTICO**: Copiar inmediatamente el `Access token`
+   - Formato: `pat-na1-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` (Norte América)
+   - Formato: `pat-eu1-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` (Europa)
+   - **Este token NUNCA se puede volver a visualizar**
 
-3. **Configurar Archivo**
-   - Colocar archivo en `./firestore/nombre-del-archivo.json`
-   - Renombrar para identificar fácilmente
+2. **Obtener Portal ID**
+   - Ir a `Settings` → `Account Setup` → `Account Details`
+   - Copiar el `Hub ID` (Portal ID)
+   - Ejemplo: `8799389`
 
-4. **Configurar en .env**
-   ```bash
-   FIRESTORE_PROJECT_ID=tu-proyecto-firebase
-   FIREBASE_CREDENTIALS=./firestore/tu-archivo-credenciales.json
-   GOOGLE_CLOUD_PROJECT=tu-proyecto-firebase
-   GOOGLE_APPLICATION_CREDENTIALS=./firestore/tu-archivo-credenciales.json
-   ```
-
-### 📦 **Instalación Paso a Paso**
-
-#### **1. Preparación del Entorno**
+### **🌐 Paso 4: Configurar en Producción (Cloud Run)**
 
 ```bash
-# Clonar el repositorio
-git clone https://github.com/GibrannClivi/clivi_mcp_orchestrator_v2.1.git
-cd mcp_orchestrator_v1
+# 🚀 Actualizar variables de entorno en Cloud Run
+gcloud run services update mcp-orchestrator-v1 \
+  --set-env-vars HUBSPOT_ACCESS_TOKEN=pat-na1-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx \
+  --set-env-vars HUBSPOT_API_KEY=pat-na1-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx \
+  --set-env-vars HUBSPOT_PORTAL_ID=8799389 \
+  --region=us-central1
 
-# Verificar versión de Node.js (requiere Node 18+)
-node --version
+# 🔐 Alternativamente, usar Google Secret Manager (MÁS SEGURO):
+echo "pat-na1-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" | gcloud secrets create hubspot-token-prod --data-file=-
 
-# Instalar dependencias
-npm install
+# Actualizar Cloud Run para usar el secreto
+gcloud run services update mcp-orchestrator-v1 \
+  --set-secrets="HUBSPOT_ACCESS_TOKEN=hubspot-token-prod:latest" \
+  --set-secrets="HUBSPOT_API_KEY=hubspot-token-prod:latest" \
+  --set-env-vars HUBSPOT_PORTAL_ID=8799389 \
+  --region=us-central1
 ```
 
-#### **2. Configuración de Credenciales**
+### **✅ Paso 5: Verificar Token en Producción**
 
 ```bash
-# Crear archivo de configuración
-cp .env.example .env
+# 🧪 Test inmediato del token
+curl -H "Authorization: Bearer pat-na1-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" \
+     "https://api.hubapi.com/crm/v3/objects/contacts?limit=1"
 
-# Editar con tus credenciales
-nano .env
-
-# Crear directorio para credenciales Firebase
-mkdir -p firestore
-
-# Colocar archivo de credenciales de Firebase en ./firestore/
-```
-
-#### **3. Validación de Configuración**
-
-```bash
-# Compilar TypeScript
-npm run build
-
-# Validar configuración
-npm run validate:config
-
-# Test de conectividad con todas las fuentes
-npm run test:connections
-```
-
-#### **4. Ejecución Local**
-
-```bash
-# Modo desarrollo (con hot reload)
-npm run dev
-
-# Modo producción
-npm start
-
-# El servidor estará disponible en:
-# http://localhost:4000/graphql
-```
-
-### 🧪 **Verificación de Instalación**
-
-#### **Test de Health Check**
-
-```bash
-# Verificar que el servidor esté funcionando
-curl http://localhost:4000/health
-
-# Respuesta esperada:
+# 📊 Respuesta esperada (éxito):
 {
-  "status": "healthy",
-  "timestamp": "2025-07-03T00:00:00.000Z",
-  "uptime": 12345,
-  "connections": {
-    "chargebee": "connected",
-    "hubspot": "connected",
-    "firestore": "connected"
-  }
-}
-```
-
-#### **Test de Consulta GraphQL**
-
-```bash
-# Test con usuario conocido
-curl -X POST http://localhost:4000/graphql \
-  -H "Content-Type: application/json" \
-  -d '{
-    "query": "query { getUserProfile(query: \"test@upgradebalance.com\", queryType: \"email\") { name email plan subscriptionStatus sourceBreakdown { field source } } }"
-  }'
-```
-
-### 🚨 **Troubleshooting Común**
-
-#### **Error: Firebase credentials not found**
-
-```bash
-# Verificar que el archivo existe
-ls -la ./firestore/
-
-# Verificar permisos
-chmod 600 ./firestore/tu-archivo.json
-
-# Verificar formato JSON válido
-cat ./firestore/tu-archivo.json | jq .
-```
-
-#### **Error: Chargebee authentication failed**
-
-```bash
-# Verificar credenciales
-echo "Site: $CHARGEBEE_SITE"
-echo "API Key: ${CHARGEBEE_API_KEY:0:20}..."
-
-# Test directo con cURL
-curl -u $CHARGEBEE_API_KEY: \
-  https://$CHARGEBEE_SITE.chargebee.com/api/v2/customers?limit=1
-```
-
-#### **Error: HubSpot token invalid**
-
-```bash
-# Verificar token
-echo "Token: ${HUBSPOT_ACCESS_TOKEN:0:20}..."
-
-# Test directo
-curl -H "Authorization: Bearer $HUBSPOT_ACCESS_TOKEN" \
-  https://api.hubapi.com/crm/v3/objects/contacts?limit=1
-```
-
----
-
----
-
-# 🧪 Testing y Validación
-
-## ✅ **Tests Automatizados**
-
-El MCP Orchestrator incluye una suite completa de tests para garantizar la calidad y funcionamiento correcto:
-
-```bash
-# Ejecutar todos los tests
-npm test
-
-# Tests específicos por categoría
-npm run test:unit          # Tests unitarios (mocking de APIs)
-npm run test:integration   # Tests de integración (APIs reales)
-npm run test:graphql      # Tests del endpoint GraphQL
-npm run test:mcp          # Tests específicos del MCP Manager
-
-# Generar reporte de cobertura
-npm run test:coverage
-```
-
-### � **Métricas de Calidad Esperadas**
-
-- **Cobertura de Código**: >85%
-- **Tiempo de Respuesta**: <3 segundos promedio
-- **Exactitud de Datos**: 100% (sin contaminación)
-- **Disponibilidad del Sistema**: >99.9%
-
-## �🔍 **Validación Manual**
-
-### **Test de Usuario Específico**
-
-```bash
-# Script de validación con usuario real
-node scripts/validate_user.js test@upgradebalance.com
-
-# Respuesta esperada:
-✅ Chargebee: Customer encontrado
-✅ Firestore: Usuario encontrado con healthSummary
-⚠️  HubSpot: No encontrado (normal si no existe)
-✅ Consolidación: Perfil completo generado
-```
-
-### **Test de Conectividad Completo**
-
-```bash
-# Verificar conexión a todas las integraciones
-node scripts/test_connections.js
-
-# Validar configuración del sistema
-npm run validate:config
-```
-
-### **Debug Detallado**
-
-```bash
-# Ejecutar con logs detallados
-DEBUG=mcp:* npm start
-
-# Logs específicos por componente
-DEBUG=mcp:manager npm start      # Solo MCP Manager
-DEBUG=mcp:chargebee npm start    # Solo integración Chargebee
-DEBUG=mcp:hubspot npm start      # Solo integración HubSpot
-DEBUG=mcp:firestore npm start    # Solo integración Firestore
-```
-
-## 🧪 **Tests de Integración Real**
-
-### **Test con Datos de Producción**
-
-```javascript
-// Ejemplo de test de integración
-const testRealIntegration = async () => {
-  const testCases = [
-    { query: "test@upgradebalance.com", type: "email" },
-    { query: "+52 55 1234 5678", type: "phone" },
-    { query: "Juan Pérez García", type: "name" }
-  ];
-  
-  for (const testCase of testCases) {
-    const result = await mcpManager.getUserProfile(testCase.query, testCase.type);
-    console.log(`✅ Test ${testCase.type}: ${result ? 'PASS' : 'FAIL'}`);
-  }
-};
-```
-
-### **Validación de healthSummary**
-
-```bash
-# Test específico para mapeo de datos médicos
-npm run test:health-summary
-
-# Verificar estructura anidada
-npm run validate:firestore-structure
-```
-
----
-
-## 📝 Scripts Fundamentales del Repositorio
-
-### 🔧 **Scripts de Desarrollo y Testing**
-
-| Script | Descripción | Uso |
-|--------|-------------|-----|
-| `test_graphql_endpoint.js` | Prueba completa del endpoint GraphQL en producción | `node test_graphql_endpoint.js` |
-| `validate_all_integrations.js` | Valida todas las integraciones (Chargebee, HubSpot, Firebase) | `node validate_all_integrations.js` |
-| `debug_chargebee_specific.js` | Debug específico de problemas con Chargebee | `node debug_chargebee_specific.js` |
-| `debug_firebase_direct.js` | Prueba directa de conexión con Firebase | `node debug_firebase_direct.js` |
-| `debug_hubspot_exact.js` | Debug detallado de consultas HubSpot | `node debug_hubspot_exact.js` |
-| `test_firebase_connection.js` | Valida conectividad con Firestore | `node test_firebase_connection.js` |
-
-### 🚀 **Scripts de Despliegue**
-
-| Script | Descripción | Uso |
-|--------|-------------|-----|
-| `deploy.sh` | Script principal de build y deploy completo | `./deploy.sh` |
-| `deploy-cloudrun.sh` | Deploy específico para Cloud Run | `./deploy-cloudrun.sh` |
-| `quick_deploy.sh` | Deploy rápido para desarrollo | `./quick_deploy.sh` |
-
-### 🛠️ **Scripts de Utilidades**
-
-| Script | Descripción | Uso |
-|--------|-------------|-----|
-| `build_with_patch.js` | Build con parches de compatibilidad | `node build_with_patch.js` |
-| `fix_firebase_admin.js` | Corrige problemas comunes de Firebase Admin | `node fix_firebase_admin.js` |
-| `check_firestore_users.ts` | Lista usuarios en Firestore para debug | `npx ts-node check_firestore_users.ts` |
-
----
-
-## 🧩 Guía para Añadir Nuevos Campos de Datos
-
-### 📊 **Añadir Campo desde Chargebee**
-
-#### 1. **Actualizar el Tipo GraphQL**
-```typescript
-// src/graphql/types/index.ts
-export const typeDefs = `
-  type UserProfile {
-    # ...existing fields...
-    nuevoCargoChargebee: String  # ← Añadir aquí
-    sourceBreakdown: [SourceBreakdown]
-  }
-`;
-```
-
-#### 2. **Actualizar el MCP Manager**
-```typescript
-// src/mcp/mcpManager.ts
-async getChargebeeData(query: string): Promise<any> {
-  // ...existing code...
-  
-  if (customer) {
-    return {
-      // ...existing fields...
-      nuevoCargoChargebee: customer.billing_address?.state || null,  // ← Añadir mapping
-    };
-  }
-}
-```
-
-#### 3. **Actualizar el Service**
-```typescript
-// src/services/userProfileService.ts
-async getUserProfile(query: string): Promise<UserProfile> {
-  // ...existing code...
-  
-  return {
-    // ...existing fields...
-    nuevoCargoChargebee: chargebeeData?.nuevoCargoChargebee || null,
-    sourceBreakdown: [
-      // ...existing breakdown...
-      ...(chargebeeData?.nuevoCargoChargebee ? [{
-        field: 'nuevoCargoChargebee',
-        value: chargebeeData.nuevoCargoChargebee,
-        source: 'chargebee'
-      }] : [])
-    ]
-  };
-}
-```
-
-### 📞 **Añadir Campo desde HubSpot**
-
-#### 1. **Actualizar el Tipo GraphQL**
-```typescript
-// src/graphql/types/index.ts
-export const typeDefs = `
-  type UserProfile {
-    # ...existing fields...
-    nuevoCampoHubspot: String  # ← Añadir aquí
-  }
-`;
-```
-
-#### 2. **Actualizar el MCP Manager**
-```typescript
-// src/mcp/mcpManager.ts
-async getHubSpotData(query: string): Promise<any> {
-  // ...existing code...
-  
-  const properties = [
-    'firstname', 'lastname', 'email', 'phone',
-    'nuevo_campo_hubspot'  // ← Añadir propiedad de HubSpot
-  ];
-  
-  // En el mapping de respuesta:
-  return {
-    // ...existing fields...
-    nuevoCampoHubspot: contact.properties.nuevo_campo_hubspot || null,
-  };
-}
-```
-
-#### 3. **Actualizar el Service**
-```typescript
-// src/services/userProfileService.ts
-// Similar al paso 3 de Chargebee, pero con 'hubspot' como source
-```
-
-### 🔥 **Añadir Campo desde Firebase**
-
-#### 1. **Actualizar el Tipo GraphQL**
-```typescript
-// src/graphql/types/index.ts
-export const typeDefs = `
-  type UserProfile {
-    # ...existing fields...
-    nuevoCampoFirebase: String  # ← Añadir aquí
-  }
-`;
-```
-
-#### 2. **Actualizar el MCP Manager**
-```typescript
-// src/mcp/mcpManager.ts
-async getFirebaseData(query: string): Promise<any> {
-  // ...existing code...
-  
-  return {
-    // ...existing fields...
-    nuevoCampoFirebase: userData?.nuevoCampoFirebase || null,
-  };
-}
-```
-
-#### 3. **Actualizar el Service**
-```typescript
-// src/services/userProfileService.ts
-// Similar a los pasos anteriores, pero con 'firebase' como source
-```
-
-### ✅ **Testing del Nuevo Campo**
-
-```javascript
-// En test_graphql_endpoint.js
-const graphqlQuery = {
-  query: `
-    query getUserProfile($query: String!) {
-      getUserProfile(query: $query) {
-        # ...existing fields...
-        nuevoCargoChargebee     # ← Añadir en query de prueba
-        nuevoCampoHubspot       # ← Añadir en query de prueba
-        nuevoCampoFirebase      # ← Añadir en query de prueba
-        sourceBreakdown {
-          field
-          value
-          source
-        }
+  "results": [
+    {
+      "id": "12345",
+      "properties": {
+        "email": "paciente@example.com",
+        "firstname": "Juan",
+        "lastname": "Pérez"
       }
     }
-  `
-};
+  ]
+}
+
+# ❌ Respuesta de error (401):
+{
+  "status": "error",
+  "message": "This hapikey (pat-na1-xxx) does not have proper permissions!"
+}
 ```
 
-### 🚀 **Deployment tras Añadir Campos**
+### **🔄 Paso 6: Verificar Integración Completa**
 
 ```bash
-# 1. Test local
-npm run build
-npm run dev
+# 🚀 Verificar que el sistema funciona completo
+curl -X POST https://mcp-orchestrator-v1-xxxx-uc.a.run.app/graphql \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "query { getUserProfile(query: \"test@example.com\", queryType: \"email\") { name email sources { chargebee hubspot firestore } } }"
+  }'
 
-# 2. Test del endpoint
-node test_graphql_endpoint.js
+# 📊 Respuesta esperada:
+{
+  "data": {
+    "getUserProfile": {
+      "name": "Juan Pérez",
+      "email": "test@example.com",
+      "sources": {
+        "chargebee": "success",
+        "hubspot": "success",
+        "firestore": "success"
+      }
+    }
+  }
+}
+```
 
-# 3. Deploy a producción
-./deploy.sh
+### **🛠️ Herramientas de Configuración**
+
+El proyecto incluye herramientas específicas para la configuración y monitoreo de HubSpot:
+
+```bash
+# 🔧 Script de verificación de HubSpot
+./verify_hubspot.sh
+
+# 📊 Configuración de monitoreo
+# Revisar y personalizar: ./hubspot-monitoring.config
+
+# 📋 Uso del script de verificación:
+# 1. Configurar variables de entorno
+export HUBSPOT_ACCESS_TOKEN="pat-na1-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+export HUBSPOT_PORTAL_ID="8799389"
+
+# 2. Ejecutar verificación
+./verify_hubspot.sh
+
+# 3. Interpretar resultados:
+# ✅ Verde: Configuración correcta
+# ⚠️ Amarillo: Advertencias (revisar pero no crítico)
+# ❌ Rojo: Errores que requieren corrección inmediata
+```
+
+### **📋 Salida Esperada del Script**
+
+```bash
+🚀 Verificando configuración de HubSpot Private App...
+==================================================
+ℹ️  Verificando variables de entorno...
+✅ HUBSPOT_ACCESS_TOKEN configurado (pat-na1-xxxxxxxx...)
+✅ HUBSPOT_PORTAL_ID configurado (8799389)
+ℹ️  Verificando formato del token...
+✅ Formato del token válido
+ℹ️  Probando conectividad básica con HubSpot...
+✅ Conectividad exitosa - Token válido
+ℹ️  Información del primer contacto encontrado:
+  ID: 12345
+  Email: test@example.com
+  Nombre: Juan Pérez
+ℹ️  Verificando permisos específicos...
+✅ Permisos de lectura de deals ✓
+✅ Permisos de lectura de schemas ✓
+ℹ️  Probando búsqueda por email...
+✅ Búsqueda por email funcionando ✓
+ℹ️  Contactos encontrados para test@example.com: 1
+ℹ️  Verificando límites de API...
+✅ API funcionando dentro de límites normales
+✅ Verificación completa de HubSpot Private App
+==================================================
+ℹ️  La integración de HubSpot está lista para producción
+```
+
+### **🚨 Troubleshooting con el Script**
+
+```bash
+# ❌ Si el script falla con error 401:
+echo "Error 401: Token inválido"
+echo "Pasos de solución:"
+echo "1. Ir a https://app.hubspot.com/"
+echo "2. Settings → Integrations → Private Apps"
+echo "3. Seleccionar la app → Actions → Rotate token"
+echo "4. Actualizar HUBSPOT_ACCESS_TOKEN y volver a ejecutar"
+
+# ❌ Si el script falla con error 403:
+echo "Error 403: Permisos insuficientes"
+echo "Verificar scopes en la Private App:"
+echo "- crm.objects.contacts.read"
+echo "- crm.objects.deals.read"
+echo "- crm.schemas.contacts.read"
 ```
 
 ---
 
-## 🌐 Despliegue
+# 🌐 Despliegue
 
-### 🚀 **Google Cloud Run (Recomendado)**
+## 📦 **Despliegue en Google Cloud Run**
 
-**URL de Servicio Actual**: `https://mcp-orchestrator-v1-zpittimqlq-uc.a.run.app`
-
-
-
-El MCP Orchestrator está optimizado para Cloud Run con configuración automática:
-
-#### **Despliegue con Un Comando**
+### **🔧 Preparación para Producción**
 
 ```bash
-# Script automatizado de despliegue
-./deploy-cloudrun.sh
+# 1. Compilar aplicación
+npm run build
 
-# El script hace:
-# 1. Build de imagen Docker
-# 2. Push a Artifact Registry  
-# 3. Deploy a Cloud Run
-# 4. Configuración de variables de entorno
-# 5. Configuración de secretos
+# 2. Crear imagen Docker
+docker build -t mcp-orchestrator-v1 .
+
+# 3. Taggear para Google Container Registry
+docker tag mcp-orchestrator-v1 gcr.io/PROJECT_ID/mcp-orchestrator-v1
+
+# 4. Subir imagen
+docker push gcr.io/PROJECT_ID/mcp-orchestrator-v1
 ```
 
-#### **Despliegue Manual Paso a Paso**
+### **🚀 Despliegue Inicial**
 
 ```bash
-# 1. Configurar proyecto de Google Cloud
-gcloud config set project tu-proyecto-gcp
-
-# 2. Habilitar APIs necesarias
-gcloud services enable run.googleapis.com
-gcloud services enable cloudbuild.googleapis.com
-gcloud services enable artifactregistry.googleapis.com
-
-# 3. Crear repositorio en Artifact Registry
-gcloud artifacts repositories create mcp-orchestrator \
-  --repository-format=docker \
-  --location=us-central1
-
-# 4. Build y push de imagen
-docker build -t us-central1-docker.pkg.dev/tu-proyecto/mcp-orchestrator/mcp-orchestrator:latest .
-docker push us-central1-docker.pkg.dev/tu-proyecto/mcp-orchestrator/mcp-orchestrator:latest
-
-# 5. Deploy a Cloud Run
-gcloud run deploy mcp-orchestrator \
-  --image us-central1-docker.pkg.dev/tu-proyecto/mcp-orchestrator/mcp-orchestrator:latest \
+# Desplegar en Cloud Run
+gcloud run deploy mcp-orchestrator-v1 \
+  --image gcr.io/PROJECT_ID/mcp-orchestrator-v1 \
   --platform managed \
   --region us-central1 \
   --allow-unauthenticated \
-  --port 4000 \
   --memory 1Gi \
   --cpu 1 \
+  --concurrency 100 \
   --max-instances 10 \
-  --concurrency 100
-```
-
-### 🔧 **Configuración de Secretos en Cloud Run**
-
-```bash
-# Crear secretos para credenciales sensibles
-gcloud secrets create chargebee-api-key --data-file=<(echo "$CHARGEBEE_API_KEY")
-gcloud secrets create hubspot-token --data-file=<(echo "$HUBSPOT_ACCESS_TOKEN")
-gcloud secrets create firebase-credentials --data-file=./firestore/tu-archivo.json
-
-# Configurar el servicio para usar secretos
-gcloud run services update mcp-orchestrator \
-  --set-env-vars="ENV=production,CHARGEBEE_SITE=clivi-test" \
+  --set-env-vars PORT=8080,NODE_ENV=production \
   --set-secrets="CHARGEBEE_API_KEY=chargebee-api-key:latest" \
-  --set-secrets="HUBSPOT_ACCESS_TOKEN=hubspot-token:latest" \
-  --set-secrets="GOOGLE_APPLICATION_CREDENTIALS=/secrets/firebase-credentials"
+  --set-secrets="HUBSPOT_ACCESS_TOKEN=hubspot-token-prod:latest" \
+  --set-secrets="FIREBASE_CREDENTIALS=firebase-credentials:latest" \
+  --set-env-vars CHARGEBEE_SITE=upgradebalance-test \
+  --set-env-vars HUBSPOT_PORTAL_ID=8799389 \
+  --set-env-vars FIRESTORE_PROJECT_ID=dtwo-firebase-test
 ```
 
-### 📊 **Configuración de Cloud Run Optimizada**
-
-```yaml
-# cloudrun.yaml - Configuración completa
-apiVersion: serving.knative.dev/v1
-kind: Service
-metadata:
-  name: mcp-orchestrator
-  annotations:
-    run.googleapis.com/ingress: all
-spec:
-  template:
-    metadata:
-      annotations:
-        autoscaling.knative.dev/maxScale: "10"
-        autoscaling.knative.dev/minScale: "1"
-        run.googleapis.com/cpu-throttling: "false"
-        run.googleapis.com/memory: "1Gi"
-        run.googleapis.com/cpu: "1000m"
-    spec:
-      containerConcurrency: 100
-      timeoutSeconds: 300
-      containers:
-      - image: us-central1-docker.pkg.dev/tu-proyecto/mcp-orchestrator/mcp-orchestrator:latest
-        ports:
-        - containerPort: 4000
-        env:
-        - name: PORT
-          value: "4000"
-        - name: ENV
-          value: "production"
-        resources:
-          limits:
-            cpu: 1000m
-            memory: 1Gi
-```
-
-### � **CI/CD con GitHub Actions**
-
-```yaml
-# .github/workflows/deploy.yml
-name: Deploy to Cloud Run
-
-on:
-  push:
-    branches: [ main ]
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-    
-    - name: Setup Cloud SDK
-      uses: google-github-actions/setup-gcloud@v0
-      with:
-        service_account_key: ${{ secrets.GCP_SA_KEY }}
-        project_id: ${{ secrets.GCP_PROJECT_ID }}
-        
-    - name: Build and Deploy
-      run: |
-        gcloud builds submit --tag gcr.io/${{ secrets.GCP_PROJECT_ID }}/mcp-orchestrator
-        gcloud run deploy mcp-orchestrator \
-          --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/mcp-orchestrator \
-          --platform managed \
-          --region us-central1 \
-          --allow-unauthenticated
-```
-
-### �📡 **Health Checks y Monitoreo**
+### **🔐 Configuración de Secretos**
 
 ```bash
-# Configurar health check personalizado
-gcloud run services update mcp-orchestrator \
-  --set-env-vars="HEALTH_CHECK_PATH=/health"
+# Crear secretos para producción
+gcloud secrets create chargebee-api-key --data-file=<(echo "$CHARGEBEE_API_KEY")
+gcloud secrets create hubspot-token-prod --data-file=<(echo "$HUBSPOT_ACCESS_TOKEN")
+gcloud secrets create firebase-credentials --data-file=./firestore/credentials.json
 
-# Endpoint de health check
-GET https://mcp-orchestrator-xxx.run.app/health
-
-# Respuesta esperada:
-{
-  "status": "healthy",
-  "timestamp": "2025-07-03T00:00:00.000Z",
-  "uptime": 12345,
-  "version": "1.0.0",
-  "connections": {
-    "chargebee": "connected",
-    "hubspot": "connected",
-    "firestore": "connected"
-  },
-  "performance": {
-    "averageResponseTime": "2.3s",
-    "requestsLastHour": 145,
-    "errorRate": "0.1%"
-  }
-}
+# Verificar secretos
+gcloud secrets list
 ```
 
-### 🐳 **Dockerfile Optimizado**
+### **⚙️ Configuración de Variables de Entorno**
 
-```dockerfile
-# Multi-stage build para optimización
-FROM node:18-alpine AS builder
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --only=production
+```bash
+# Variables públicas (no sensibles)
+export PORT=8080
+export NODE_ENV=production
+export CHARGEBEE_SITE=upgradebalance-test
+export HUBSPOT_PORTAL_ID=8799389
+export FIRESTORE_PROJECT_ID=dtwo-firebase-test
 
-FROM node:18-alpine AS runtime
-WORKDIR /app
-COPY --from=builder /app/node_modules ./node_modules
-COPY dist ./dist
-COPY firestore ./firestore
-
-EXPOSE 4000
-CMD ["node", "dist/server.js"]
+# Variables secretas (almacenadas en Secret Manager)
+# - CHARGEBEE_API_KEY
+# - HUBSPOT_ACCESS_TOKEN
+# - FIREBASE_CREDENTIALS
 ```
 
----
+### **🔄 Actualización de Despliegue**
+
+```bash
+# Actualizar imagen existente
+gcloud run services update mcp-orchestrator-v1 \
+  --image gcr.io/PROJECT_ID/mcp-orchestrator-v1:latest \
+  --region us-central1
+
+# Actualizar solo variables de entorno
+gcloud run services update mcp-orchestrator-v1 \
+  --set-env-vars NEW_VAR=new_value \
+  --region us-central1
+
+# Actualizar secretos
+echo "NUEVO_TOKEN" | gcloud secrets versions add hubspot-token-prod --data-file=-
+```
+
+### **📊 Monitoreo y Logs**
+
+```bash
+# Ver logs en tiempo real
+gcloud logs tail --service-name=mcp-orchestrator-v1 --follow
+
+# Filtrar logs por error
+gcloud logs read --filter="resource.type=cloud_run_revision AND resource.labels.service_name=mcp-orchestrator-v1 AND severity>=ERROR" --limit=50
+
+# Métricas de rendimiento
+gcloud run services describe mcp-orchestrator-v1 --region=us-central1
+```
+
+### **🔍 Verificación Post-Despliegue**
+
+```bash
+# Test de salud del servicio
+curl -X GET https://mcp-orchestrator-v1-xxxx-uc.a.run.app/health
+
+# Test de GraphQL
+curl -X POST https://mcp-orchestrator-v1-xxxx-uc.a.run.app/graphql \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "query { getUserProfile(query: \"test@example.com\", queryType: \"email\") { name sources { chargebee hubspot firestore } } }"
+  }'
+
+# Verificar todas las fuentes
+curl -X POST https://mcp-orchestrator-v1-xxxx-uc.a.run.app/graphql \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "query { getUserProfile(query: \"test@upgradebalance.com\", queryType: \"email\") { sourceBreakdown { source status recordsFound } } }"
+  }'
+```
+
+### **⚠️ Troubleshooting de Despliegue**
+
+```bash
+# Error: Service account permissions
+gcloud projects add-iam-policy-binding PROJECT_ID \
+  --member="serviceAccount:SERVICE_ACCOUNT_EMAIL" \
+  --role="roles/run.invoker"
+
+# Error: Secret access denied
+gcloud secrets add-iam-policy-binding hubspot-token-prod \
+  --member="serviceAccount:SERVICE_ACCOUNT_EMAIL" \
+  --role="roles/secretmanager.secretAccessor"
+
+# Error: Container startup failed
+gcloud run revisions list --service=mcp-orchestrator-v1 --region=us-central1
+gcloud logs read --filter="resource.type=cloud_run_revision AND resource.labels.service_name=mcp-orchestrator-v1" --limit=100
+```
+
+### **📋 Checklist de Despliegue**
+
+```bash
+# ✅ Pre-Despliegue
+☐ Código compilado sin errores (npm run build)
+☐ Tests pasando (npm test)
+☐ Variables de entorno configuradas
+☐ Secretos creados en Secret Manager
+☐ Dockerfile optimizado
+☐ Imagen Docker construida y subida
+
+# ✅ Durante Despliegue
+☐ Comando de despliegue ejecutado correctamente
+☐ Servicio Cloud Run creado/actualizado
+☐ Permisos de IAM configurados
+☐ Secretos vinculados al servicio
+☐ URL del servicio obtenida
+
+# ✅ Post-Despliegue
+☐ Endpoint /health responde 200
+☐ GraphQL playground funcional
+☐ Test de usuario real exitoso
+☐ Logs sin errores críticos
+☐ Métricas de rendimiento normales
+☐ Alertas configuradas
+```
+
+### **🔄 Rollback de Emergencia**
+
+```bash
+# Listar revisiones disponibles
+gcloud run revisions list --service=mcp-orchestrator-v1 --region=us-central1
+
+# Rollback a revisión anterior
+gcloud run services update-traffic mcp-orchestrator-v1 \
+  --to-revisions=REVISION_NAME=100 \
+  --region=us-central1
+
+# Verificar rollback
+curl -X GET https://mcp-orchestrator-v1-xxxx-uc.a.run.app/health
+```
 
 ---
 
@@ -1383,55 +1110,37 @@ query ConsultaMedica($email: String!) {
     name
     email
     phone
-    userId
     
-    # Plan médico actual (Chargebee)
-    plan                    # "Plan Zero + Ozempic 1mg Mensual"
-    subscriptionStatus     # "active"
-    planStatus            # Estado específico del plan médico
+    # Estado de suscripción médica
+    plan                 # "Plan Zero + Ozempic 1mg Mensual"
+    subscriptionStatus   # active, paused, cancelled
+    planStatus          # Estado del plan médico
     
-    # Historial médico completo (Firestore)
+    # Historial médico detallado
     healthSummary {
-      currentWeight       # "78kg"
-      height             # "175cm"
-      bloodPressure      # "118/76"
-      medications {
-        name             # "Ozempic"
-        dosage          # "1mg"
-        frequency       # "weekly"
-        prescribedBy    # "Dr. López"
-      }
-      allergies         # ["Penicilina"]
-      conditions        # ["Diabetes Tipo 2"]
+      currentWeight     # "75kg"
+      height           # "170cm"
+      bloodPressure    # "120/80"
+      medications      # Lista de medicamentos actuales
+      allergies        # Alergias conocidas
+      conditions       # Condiciones médicas
       vitalSigns {
-        heartRate       # 68
-        temperature     # "36.4°C"
+        heartRate      # 72 bpm
+        temperature    # "36.5°C"
       }
     }
     
-    # Medicamentos y tratamientos activos
-    medicine            # Lista detallada de medicamentos
-    treatments          # Tratamientos en curso
+    # Medicamentos activos
+    medicine           # Lista completa de medicamentos
+    medicineCount     # Cantidad total
+    allergies         # Alergias registradas
+    treatments        # Tratamientos activos
     
-    # Próxima cita programada
-    nextAppointment {
-      date
-      type
-      doctor
-    }
-    
-    # Contacto de emergencia
-    emergencyContact {
-      name
-      phone
-      relationship
-    }
-    
-    # Verificar fuentes de datos
+    # Trazabilidad de datos
     sourceBreakdown {
       field
       value
-      source
+      source          # "chargebee", "hubspot", "firestore"
     }
   }
 }
@@ -1930,114 +1639,6 @@ query NuevaFuncionalidad {
 - Cambios en schema
 - Compatibilidad hacia atrás
 ```
-
----
-
-## 📚 Recursos y Documentación
-
-### 🔗 **Enlaces Técnicos**
-
-- **APIs de Integración**
-  - [Chargebee API Documentation](https://apidocs.chargebee.com/docs/api)
-  - [HubSpot CRM API](https://developers.hubspot.com/docs/api/crm/contacts)
-  - [Firebase Admin SDK](https://firebase.google.com/docs/admin/setup)
-
-- **Tecnologías Core**
-  - [GraphQL Specification](https://graphql.org/learn/)
-  - [Apollo Server Documentation](https://www.apollographql.com/docs/apollo-server/)
-  - [TypeScript Handbook](https://www.typescriptlang.org/docs/)
-
-- **Infraestructura**
-  - [Google Cloud Run](https://cloud.google.com/run/docs)
-  - [Docker Best Practices](https://docs.docker.com/develop/dev-best-practices/)
-  - [GitHub Actions](https://docs.github.com/en/actions)
-
-### 📖 **Documentación Interna**
-
-- **Architecture Decision Records (ADRs)**
-  - [ADR-001: Elección de GraphQL sobre REST](./docs/adr/001-graphql-choice.md)
-  - [ADR-002: Estrategia de consolidación de datos](./docs/adr/002-data-consolidation.md)
-  - [ADR-003: Manejo de errores parciales](./docs/adr/003-error-handling.md)
-
-- **Runbooks Operacionales**
-  - [Incident Response Playbook](./docs/ops/incident-response.md)
-  - [Deployment Guide](./docs/ops/deployment.md)
-  - [Monitoring & Alerting](./docs/ops/monitoring.md)
-
-### 📞 **Contactos y Soporte**
-
-- **Equipo de Desarrollo**
-  - Tech Lead: [Nombre] - tech-lead@clivi.com.mx
-  - Backend Team: backend-team@clivi.com.mx
-  - DevOps: devops@clivi.com.mx
-
-- **Soporte Operacional**
-  - On-call Engineer: oncall@clivi.com.mx
-  - Incident Manager: incidents@clivi.com.mx
-  - Security Team: security@clivi.com.mx
-
-- **Canales de Comunicación**
-  - Slack: `#mcp-orchestrator`
-  - Issues: [GitHub Issues](https://github.com/GibrannClivi/clivi_mcp_orchestrator_v2.1/issues)
-  - Docs: [Confluence Space](https://clivi.atlassian.net/mcp-orchestrator)
-
-### 🆘 **Escalation Matrix**
-
-| Severidad | Tiempo de Respuesta | Escalation Path |
-|-----------|-------------------|-----------------|
-| **P0 - Critical** | 15 minutos | On-call → Tech Lead → CTO |
-| **P1 - High** | 1 hora | Tech Lead → Engineering Manager |
-| **P2 - Medium** | 4 horas | Assigned Developer → Tech Lead |
-| **P3 - Low** | 24 horas | Product Backlog → Sprint Planning |
-
----
-
-## 📄 Licencia
-
-Este proyecto está licenciado bajo la **MIT License** - ver el archivo [LICENSE](LICENSE) para detalles completos.
-
-```
-MIT License
-
-Copyright (c) 2025 Clivi Healthcare Technology
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-```
-
----
-
-## 🎯 Estado del Proyecto
-
-**🟢 En Producción** - Versión 1.0.0
-
-- ✅ **Sistema de Salud**: Utilizado por médicos de Clivi para consultas diarias
-- ✅ **Soporte al Cliente**: Herramienta principal para agentes de soporte
-- ✅ **Análisis de Datos**: Fuente única para reportes ejecutivos
-- ✅ **Aplicaciones Móviles**: API principal para apps pacientes y médicos
-
-### 📊 **Métricas de Producción**
-
-- **Uptime**: 99.97%
-- **Latencia P95**: 2.8 segundos
-- **Queries/día**: ~50,000
-- **Pacientes activos**: ~10,000
-- **Satisfacción de desarrolladores**: 4.8/5.0
 
 ---
 
