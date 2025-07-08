@@ -1,20 +1,6 @@
 /**
- * MCP Orchestrator GraphQL Serve  // Start the server with custom context and middleware
-  const { url } = await startStandaloneServer(server, {
-    listen: { port: config.port },
-    context: async ({ req }) => {
-      // Add request context here if needed
-      return {
-        // You can add user authentication, request ID, etc.
-      };
-    },
-  });
-
-  console.log(`🚀 MCP Orchestrator ready at: ${url}`);
-  console.log(`📊 GraphQL Playground: ${url}`);
-  console.log(`🏥 Health Check: ${url.replace('/graphql', '/health')}`);
-  console.log(`🔧 Environment: ${config.env}`);
-  console.log(`📋 Project: ${config.projectName}`);ode.js/TypeScript implementation using official MCP servers
+ * MCP Orchestrator GraphQL Server
+ * Node.js/TypeScript implementation using official MCP servers
  */
 import { ApolloServer } from '@apollo/server';
 import { startStandaloneServer } from '@apollo/server/standalone';
@@ -49,7 +35,7 @@ async function startServer(): Promise<void> {
     ],
   });
 
-  // Start the server
+  // Start the server with custom context and middleware
   const { url } = await startStandaloneServer(server, {
     listen: { port: config.port },
     context: async ({ req }) => {
@@ -62,6 +48,7 @@ async function startServer(): Promise<void> {
 
   console.log(`🚀 MCP Orchestrator ready at: ${url}`);
   console.log(`📊 GraphQL Playground: ${url}`);
+  console.log(`🏥 Health Check: ${url.replace('/graphql', '/health')}`);
   console.log(`🔧 Environment: ${config.env}`);
   console.log(`📋 Project: ${config.projectName}`);
   

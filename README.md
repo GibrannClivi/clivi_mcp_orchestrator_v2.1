@@ -847,7 +847,6 @@ El proyecto incluye herramientas específicas para la configuración y monitoreo
 # Revisar y personalizar: ./hubspot-monitoring.config
 
 # 📋 Uso del script de verificación:
-# 1. Configurar variables de entorno
 export HUBSPOT_ACCESS_TOKEN="pat-na1-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 export HUBSPOT_PORTAL_ID="8799389"
 
@@ -1655,3 +1654,47 @@ query NuevaFuncionalidad {
 [Website](https://clivi.com.mx) • [Documentation](https://docs.clivi.com.mx) • [Support](mailto:soporte@clivi.com.mx)
 
 </div>
+
+## 🚀 Scripts de Consulta Rápida
+
+Para facilitar el uso del MCP Orchestrator, se incluyen scripts de consulta que permiten obtener información completa de usuarios por email:
+
+### 📋 Consulta Rápida
+```bash
+# Consulta con campos esenciales
+npx ts-node query_user.ts saidh.jimenez@clivi.com.mx
+
+# O usando el script de shell
+./query_user.sh saidh.jimenez@clivi.com.mx
+```
+
+### 📊 Consulta Completa
+```bash
+# Consulta con todos los campos disponibles
+npx ts-node complete_user_query.ts saidh.jimenez@clivi.com.mx
+
+# O usando el script de shell
+./query_user.sh saidh.jimenez@clivi.com.mx complete
+```
+
+### 🎯 Campos Incluidos en la Consulta Por Defecto
+
+**Información Básica:**
+- Nombre completo, email, teléfono
+- Empresa, cargo
+
+**Información de Suscripción:**
+- Estado de suscripción, plan, IDs de cliente y suscripción
+
+**Información Médica:**
+- ID de usuario, estado del plan, plan médico
+- Paquete incluido, tratamientos, medicamentos
+- Alergias, citas, contacto de emergencia
+
+**Desglose por Fuente:**
+- Origen de cada campo (Chargebee, HubSpot, Firebase)
+- Trazabilidad completa de datos
+
+---
+
+4. **📍 Trazabilidad Total**: Especifica el origen de cada dato para auditoría completa

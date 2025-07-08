@@ -12,6 +12,7 @@ export interface Config {
   env: string;
   projectName: string;
   port: number;
+  serviceUrl: string; // ✅ Add service URL for deployment
   
   // Chargebee
   chargebee: {
@@ -25,6 +26,7 @@ export interface Config {
     apiKey: string;
     portalId: string;
     clientSecret: string;
+    accessToken: string; // ✅ Add access token
     enabled: boolean;
   };
   
@@ -77,6 +79,7 @@ export const config: Config = {
   env: process.env.ENV || 'development',
   projectName: process.env.PROJECT_NAME || 'mcp-orchestrator-v1',
   port: parseInt(process.env.PORT || '4000', 10),
+  serviceUrl: process.env.SERVICE_URL || `http://localhost:${parseInt(process.env.PORT || '4000', 10)}`, // ✅ Add service URL
   
   chargebee: {
     site: process.env.CHARGEBEE_SITE || '',
@@ -88,6 +91,7 @@ export const config: Config = {
     apiKey: process.env.HUBSPOT_API_KEY || '',
     portalId: process.env.HUBSPOT_PORTAL_ID || '',
     clientSecret: process.env.HUBSPOT_CLIENT_SECRET || '',
+    accessToken: process.env.HUBSPOT_ACCESS_TOKEN || process.env.PRIVATE_APP_ACCESS_TOKEN || '', // ✅ Add access token
     enabled: !!(process.env.HUBSPOT_API_KEY && process.env.HUBSPOT_PORTAL_ID),
   },
   

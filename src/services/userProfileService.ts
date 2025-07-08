@@ -400,9 +400,28 @@ export class UserProfileService {
         sourceBreakdown.push({ field: 'planStatus', value: firebaseUser.planStatus, source: 'firebase' });
       }
       
-      if (firebaseUser.medicalPlan) {
-        profile.medicalPlan = firebaseUser.medicalPlan;
-        sourceBreakdown.push({ field: 'medicalPlan', value: firebaseUser.medicalPlan, source: 'firebase' });
+      if (firebaseUser.medicalPlan || firebaseUser.plan) {
+        profile.medicalPlan = firebaseUser.medicalPlan || firebaseUser.plan;
+        sourceBreakdown.push({ field: 'medicalPlan', value: firebaseUser.medicalPlan || firebaseUser.plan, source: 'firebase' });
+        console.log(`💊 Firebase medicalPlan mapped: ${firebaseUser.medicalPlan || firebaseUser.plan}`);
+      }
+      
+      // Extract planIncludedPackage if available
+      if (firebaseUser.planIncludedPackage) {
+        profile.planIncludedPackage = firebaseUser.planIncludedPackage;
+        sourceBreakdown.push({ field: 'planIncludedPackage', value: firebaseUser.planIncludedPackage, source: 'firebase' });
+        console.log(`📦 Firebase planIncludedPackage mapped: ${firebaseUser.planIncludedPackage}`);
+      }
+      
+      // Extract phone number from whatsapp field if phoneNumber is not available
+      if (firebaseUser.phoneNumber && !profile.phone) {
+        profile.phone = firebaseUser.phoneNumber;
+        sourceBreakdown.push({ field: 'phone', value: firebaseUser.phoneNumber, source: 'firebase' });
+        console.log(`📞 Firebase phone mapped from phoneNumber: ${firebaseUser.phoneNumber}`);
+      } else if (firebaseUser.whatsapp && !profile.phone) {
+        profile.phone = firebaseUser.whatsapp;
+        sourceBreakdown.push({ field: 'phone', value: firebaseUser.whatsapp, source: 'firebase' });
+        console.log(`📞 Firebase phone mapped from whatsapp: ${firebaseUser.whatsapp}`);
       }
       
       if (firebaseUser.medicine && Array.isArray(firebaseUser.medicine)) {
@@ -439,53 +458,87 @@ export class UserProfileService {
       // NEW REQUIRED FIELDS: treatments and healthSummary
       if (firebaseUser.treatments && Array.isArray(firebaseUser.treatments)) {
         profile.treatments = firebaseUser.treatments;
-        sourceBreakdown.push({ field: 'treatments', value: `${firebaseUser.treatments.length} treatments`, source: 'firebase' });
+        sourceBreakdown.push({ field: 'treatments', value: `${firebaseUser.treatments.length} treatments: ${firebaseUser.treatments.join(', ')}`, source: 'firebase' });
       }
       
       // Enhanced healthSummary mapping with detailed nested structure
       if (firebaseUser.healthSummary) {
         const healthSummary = firebaseUser.healthSummary;
         
-        // Map the nested structure properly
+        // Create a properly mapped health summary
         const mappedHealthSummary: any = {
+          // Map existing fields from Firebase
+          currentWeight: firebaseUser.weight || healthSummary.currentWeight || null,
+          height: firebaseUser.height || healthSummary.height || null,
+          bmi: healthSummary.bmi || null,
+          
+          // Map glucose range if available
+          glucoseRange: healthSummary.glucoseRange || null,
+          treatmentAdherenceNutrition: healthSummary.treatmentAdherenceNutrition || null,
+          extraCareCriteria: healthSummary.extraCareCriteria || [],
+          targetWeight: healthSummary.targetWeight || null,
+          
+          // Map appointments data from the appointments field
+          appointmentsSummary: firebaseUser.appointments ? {
+            totalTypes: Object.keys(firebaseUser.appointments.types || {}).length,
+            types: Object.keys(firebaseUser.appointments.types || {}),
+            preferences: {
+              meetingTypePreference: firebaseUser.appointments.meetingTypePreference,
+              autoconfirm: firebaseUser.appointments.autoconfirm
+            }
+          } : null,
+          
+          // Map program information
+          program: firebaseUser.program ? {
+            programId: firebaseUser.program.programId,
+            userModuleId: firebaseUser.program.userModuleId,
+            weekNumber: firebaseUser.program.userModuleWeekNumber,
+            lastUpdated: firebaseUser.program.lastUpdatedYearWeek
+          } : null,
+          
+          // Map messaging preferences
+          messagingPreferences: firebaseUser.messagingPreferences || null,
+          
+          // Map availability if needed
+          availability: firebaseUser.availability || null,
+          
+          // Copy all original fields
           ...healthSummary
         };
         
-        // Extract specific nested fields for better visibility
-        let summaryDescription = 'Health summary available';
+        // Create a detailed summary description
         const summaryParts: string[] = [];
         
-        if (healthSummary.currentWeight) {
-          summaryParts.push(`Weight: ${healthSummary.currentWeight}`);
+        if (healthSummary.glucoseRange) {
+          summaryParts.push(`Glucose monitoring configured (${healthSummary.glucoseRange.fastingLow}-${healthSummary.glucoseRange.fastingHigh} fasting)`);
         }
         
-        if (healthSummary.height) {
-          summaryParts.push(`Height: ${healthSummary.height}`);
+        if (firebaseUser.treatments && firebaseUser.treatments.length > 0) {
+          summaryParts.push(`Active treatments: ${firebaseUser.treatments.join(', ')}`);
         }
         
-        if (healthSummary.bloodPressure) {
-          summaryParts.push('Blood pressure recorded');
+        if (firebaseUser.program) {
+          summaryParts.push(`Program: ${firebaseUser.program.programId} (Week ${firebaseUser.program.userModuleWeekNumber})`);
         }
         
-        if (healthSummary.medications && Array.isArray(healthSummary.medications)) {
-          summaryParts.push(`${healthSummary.medications.length} medications`);
+        if (firebaseUser.planIncludedPackage) {
+          summaryParts.push(`Package: ${firebaseUser.planIncludedPackage}`);
         }
         
-        if (healthSummary.allergies && Array.isArray(healthSummary.allergies)) {
-          summaryParts.push(`${healthSummary.allergies.length} allergies`);
+        if (healthSummary.targetWeight) {
+          summaryParts.push(`Target weight: ${healthSummary.targetWeight}`);
         }
         
-        if (healthSummary.conditions && Array.isArray(healthSummary.conditions)) {
-          summaryParts.push(`${healthSummary.conditions.length} conditions`);
+        if (firebaseUser.appointments && firebaseUser.appointments.types) {
+          const appointmentTypes = Object.keys(firebaseUser.appointments.types);
+          summaryParts.push(`Appointment types: ${appointmentTypes.join(', ')}`);
         }
         
-        if (healthSummary.vitalSigns) {
-          summaryParts.push('Vital signs available');
+        if (firebaseUser.messagingPreferences && firebaseUser.messagingPreferences.diabetesRemindersEnabled !== undefined) {
+          summaryParts.push(`Diabetes reminders: ${firebaseUser.messagingPreferences.diabetesRemindersEnabled ? 'enabled' : 'disabled'}`);
         }
         
-        if (summaryParts.length > 0) {
-          summaryDescription = summaryParts.join(', ');
-        }
+        const summaryDescription = summaryParts.length > 0 ? summaryParts.join(' | ') : 'Health summary available';
         
         profile.healthSummary = mappedHealthSummary;
         sourceBreakdown.push({ field: 'healthSummary', value: summaryDescription, source: 'firebase' });

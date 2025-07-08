@@ -39,12 +39,12 @@ COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
 # Switch to non-root user  
 USER nodejs
 
-# Expose port (Cloud Run uses PORT env var, default to 4001)
-EXPOSE 4001
+# Expose port (Cloud Run uses PORT env var, default to 4000)
+EXPOSE 4000
 
-# Health check
+# Health check usando GraphQL
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:' + (process.env.PORT || 4001) + '/graphql?query={health}', (res) => process.exit(res.statusCode === 200 ? 0 : 1))"
+  CMD node -e "const http = require('http'); const data = JSON.stringify({query: '{health}'}); const req = http.request({hostname: 'localhost', port: process.env.PORT || 4000, path: '/graphql', method: 'POST', headers: {'Content-Type': 'application/json', 'Content-Length': data.length}}, (res) => { let body = ''; res.on('data', (chunk) => body += chunk); res.on('end', () => { try { const result = JSON.parse(body); process.exit(result.data && result.data.health ? 0 : 1); } catch(e) { process.exit(1); } }); }); req.on('error', () => process.exit(1)); req.write(data); req.end();"
 
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["dumb-init", "--"]

@@ -3,6 +3,16 @@
  * Implements the COMPLETE schema for all available fields from MCP sources
  */
 
+export interface HealthStatus {
+  status: string;
+  timestamp: string;
+  services: {
+    chargebee: boolean;
+    hubspot: boolean;
+    firebase: boolean;
+  };
+}
+
 export interface Appointment {
   appointmentId?: string;
   date?: string;

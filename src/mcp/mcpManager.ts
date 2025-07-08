@@ -441,18 +441,33 @@ class FirebaseAPIClient {
         
         console.log(`✅ Firebase API: User found - ID: ${userDoc.id}`);
         
+        // Log the complete userData to debug what fields are available
+        console.log('🔍 Firebase API: Complete user data structure:');
+        console.log(JSON.stringify(userData, null, 2));
+        
         return {
           uid: userDoc.id,
           email: userData.emailAddress || userData.email,
-          emailAddress: userData.emailAddress,
+          emailAddress: userData.emailAddress, // ✅ Keep emailAddress for processing
+          emailAdress: userData.emailAddress, // ✅ Map to emailAdress for GraphQL (typo in schema)
           phoneNumber: userData.phoneNumber,
+          whatsapp: userData.whatsapp, // ✅ ADD whatsapp field
           displayName: userData.nameDisplay,
           firstName: userData.nameFirst,
           lastName: userData.nameLast || userData.lastName,
           planStatus: userData.planStatus,
           medicalPlan: userData.medicalPlan,
+          plan: userData.plan, // ✅ ADD plan field
+          planIncludedPackage: userData.planIncludedPackage, // ✅ ADD planIncludedPackage field
           treatments: userData.treatments || [],
-          healthSummary: userData.healthSummary || {}
+          healthSummary: userData.healthSummary || {},
+          // Add all other fields that might be available
+          medicine: userData.medicine || [],
+          allergies: userData.allergies || [],
+          emergencyContact: userData.emergencyContact,
+          selfSupplyLogs: userData.selfSupplyLogs || [],
+          lastAppointment: userData.lastAppointment,
+          nextAppointment: userData.nextAppointment
         };
       } else {
         console.log(`❌ Firebase API: No user found for ${queryType}: ${query}`);
