@@ -1650,9 +1650,11 @@ query NuevaFuncionalidad {
 ---
 
 **Desarrollado con ❤️ por el equipo de Clivi Healthcare Technology**
+**Desarrollado con ❤️ por el equipo de Clivi
 
 [Website](https://clivi.com.mx) • [Documentation](https://docs.clivi.com.mx) • [Support](mailto:soporte@clivi.com.mx)
 
+<<<<<<< HEAD
 </div>
 
 ## 🚀 Scripts de Consulta Rápida
@@ -1698,3 +1700,5 @@ npx ts-node complete_user_query.ts saidh.jimenez@clivi.com.mx
 ---
 
 4. **📍 Trazabilidad Total**: Especifica el origen de cada dato para auditoría completa
+=======
+>>>>>>> 01980fb60c4962ba6a966498bfa407c4ac831bd8
